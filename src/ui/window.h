@@ -2,9 +2,8 @@
 
 #include <sal.h>
 
-#define MIN_CELL_SIZE 24
-#define MAX_CELL_SIZE 48
-
-#define MARGIN 10
+#define CELL_SIZE 32
+#define BORDER_WIDTH 16
+#define BORDER_HEIGHT 16
 
 _Ret_maybenull_ HWND CreateMainWindow(_In_ HINSTANCE hInstance);

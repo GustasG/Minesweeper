@@ -48,10 +48,39 @@ UnloadFaceResources(_In_ FaceResources* resources)
 }
 
 static void
+UnloadBorderResources(_In_ BorderResources* resources)
+{
+    if (resources->bottom != NULL)
+        DeleteObject(resources->bottom);
+
+    if (resources->bottomLeft != NULL)
+        DeleteObject(resources->bottomLeft);
+
+    if (resources->bottomRight != NULL)
+        DeleteObject(resources->bottomRight);
+
+    if (resources->left != NULL)
+        DeleteObject(resources->left);
+
+    if (resources->right != NULL)
+        DeleteObject(resources->right);
+
+    if (resources->top != NULL)
+        DeleteObject(resources->top);
+
+    if (resources->topLeft != NULL)
+        DeleteObject(resources->topLeft);
+
+    if (resources->topRight != NULL)
+        DeleteObject(resources->topRight);
+}
+
+static void
 UnloadAssets(_In_ Application* app)
 {
     UnloadCellResources(&app->cellResources);
     UnloadFaceResources(&app->faceResources);
+    UnloadBorderResources(&app->borderResources);
 }
 
 static bool
@@ -114,12 +143,45 @@ LoadFaceResources(_In_ FaceResources* resources, _In_ HINSTANCE hInstance)
 }
 
 static bool
+LoadBorderResources(_In_ BorderResources* resources, _In_ HINSTANCE hInstance)
+{
+    if ((resources->bottom = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM))) == NULL)
+        return false;
+
+    if ((resources->bottomLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_LEFT))) == NULL)
+        return false;
+
+    if ((resources->bottomRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->left = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_LEFT))) == NULL)
+        return false;
+
+    if ((resources->right = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->top = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP))) == NULL)
+        return false;
+
+    if ((resources->topLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_LEFT))) == NULL)
+        return false;
+
+    if ((resources->topRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_RIGHT))) == NULL)
+        return false;
+
+    return true;
+}
+
+static bool
 LoadAssets(_In_ Application* app, _In_ HINSTANCE hInstance)
 {
     if (!LoadCellResources(&app->cellResources, hInstance))
         goto fail;
 
     if (!LoadFaceResources(&app->faceResources, hInstance))
+        goto fail;
+
+    if (!LoadBorderResources(&app->borderResources, hInstance))
         goto fail;
 
     return true;
@@ -144,6 +206,9 @@ CreateApplication(_In_ HINSTANCE hInstance)
         HeapFree(hHeap, 0, app);
         return NULL;
     }
+
+    app->hoverCellX = (uint32_t)-1;
+    app->hoverCellY = (uint32_t)-1;
 
     return app;
 }

@@ -135,7 +135,14 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="assets\cells\bitmap2.bmp" />
+    <Image Include="assets\border\bottom.bmp" />
+    <Image Include="assets\border\bottomleft.bmp" />
+    <Image Include="assets\border\bottomright.bmp" />
+    <Image Include="assets\border\left.bmp" />
+    <Image Include="assets\border\right.bmp" />
+    <Image Include="assets\border\top.bmp" />
+    <Image Include="assets\border\topleft.bmp" />
+    <Image Include="assets\border\topright.bmp" />
     <Image Include="assets\cells\blast.bmp" />
     <Image Include="assets\cells\cell1.bmp" />
     <Image Include="assets\cells\cell2.bmp" />

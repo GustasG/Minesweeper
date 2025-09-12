@@ -6,32 +6,24 @@
 #include "ui/render.h"
 #include "ui/window.h"
 
-#define CLASS_NAME L"Minesweeper"
-
-static bool
-AdjustWindowRectForCellSize(_In_ const Application* app, _In_ HWND hWnd, _Out_ LPRECT lpRect)
+_Success_(
+    return) static bool AdjustWindowRectForCellSize(_In_ const Application* app, _In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
-    uint32_t minClientWidth = app->minefield.width * MIN_CELL_SIZE + MARGIN * 2;
-    uint32_t minClientHeight = app->minefield.height * MIN_CELL_SIZE + MARGIN * 2;
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+    uint32_t minClientWidth = app->minefield.width * (uint32_t)cellSize + (uint32_t)(2 * borderWidth);
+    uint32_t minClientHeight = app->minefield.height * (uint32_t)cellSize + (uint32_t)(2 * borderHeight);
 
     lpRect->left = 0;
     lpRect->top = 0;
     lpRect->right = (LONG)minClientWidth;
     lpRect->bottom = (LONG)minClientHeight;
 
-    WINDOWINFO wi = {
-        .cbSize = sizeof(WINDOWINFO),
-    };
-
-    if (GetWindowInfo(hWnd, &wi))
-    {
-        if (AdjustWindowRectEx(lpRect, wi.dwStyle, TRUE, wi.dwExStyle))
-        {
-            return true;
-        }
-    }
-
-    return false;
+    return AdjustWindowRectExForDpi(lpRect, GetWindowStyle(hWnd), TRUE, GetWindowExStyle(hWnd), dpi);
 }
 
 static bool
@@ -69,27 +61,123 @@ ShowGameOverMessage(_In_ HWND hWnd, _In_ GameState state)
 }
 
 static void
-HandleLeftMouseClick(_In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 {
-    Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-
-    if (x < (int32_t)MARGIN || y < (int32_t)MARGIN)
-    {
+    if (!app->isLeftMouseDown)
         return;
+
+    uint32_t prevX = app->hoverCellX;
+    uint32_t prevY = app->hoverCellY;
+
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+    if (x >= borderWidth && y >= borderHeight)
+    {
+        uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
+        uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+
+        if (cellX < app->minefield.width && cellY < app->minefield.height)
+        {
+            app->hoverCellX = cellX;
+            app->hoverCellY = cellY;
+        }
+        else
+        {
+            app->hoverCellX = (uint32_t)-1;
+            app->hoverCellY = (uint32_t)-1;
+        }
+    }
+    else
+    {
+        app->hoverCellX = (uint32_t)-1;
+        app->hoverCellY = (uint32_t)-1;
     }
 
-    uint32_t cellX = (uint32_t)(x - MARGIN) / app->renderInfo.cellSize;
-    uint32_t cellY = (uint32_t)(y - MARGIN) / app->renderInfo.cellSize;
-
-    if (cellX >= app->minefield.width || cellY >= app->minefield.height)
+    if (app->hoverCellX != prevX || app->hoverCellY != prevY)
     {
-        return;
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
+}
+
+static void
+HandleLeftMouseDown(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    SetCapture(hWnd);
+    app->isLeftMouseDown = true;
+
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+    if (x >= borderWidth && y >= borderHeight)
+    {
+        uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
+        uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+
+        if (cellX < app->minefield.width && cellY < app->minefield.height)
+        {
+            app->hoverCellX = cellX;
+            app->hoverCellY = cellY;
+        }
+        else
+        {
+            app->hoverCellX = (uint32_t)-1;
+            app->hoverCellY = (uint32_t)-1;
+        }
+    }
+    else
+    {
+        app->hoverCellX = (uint32_t)-1;
+        app->hoverCellY = (uint32_t)-1;
     }
 
-    if (RevealCell(&app->minefield, cellX, cellY))
-    {
-        InvalidateRect(hWnd, NULL, false);
+    InvalidateRect(hWnd, NULL, FALSE);
+}
 
+static void
+HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    bool revealed = false;
+
+    if (app->isLeftMouseDown)
+    {
+        ReleaseCapture();
+        app->isLeftMouseDown = false;
+
+        UINT dpi = GetDpiForWindow(hWnd);
+
+        int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+        int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+        int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+        if (x >= borderWidth && y >= borderHeight)
+        {
+            uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
+            uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+
+            if (cellX < app->minefield.width && cellY < app->minefield.height)
+            {
+                if (RevealCell(&app->minefield, cellX, cellY))
+                {
+                    revealed = true;
+                }
+            }
+        }
+    }
+
+    app->hoverCellX = (uint32_t)-1;
+    app->hoverCellY = (uint32_t)-1;
+
+    InvalidateRect(hWnd, NULL, FALSE);
+
+    if (revealed)
+    {
         if (app->minefield.state == GAME_WON || app->minefield.state == GAME_LOST)
         {
             ShowGameOverMessage(hWnd, app->minefield.state);
@@ -98,17 +186,21 @@ HandleLeftMouseClick(_In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 }
 
 static void
-HandleRightMouseClick(_In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+HandleRightMouseClick(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 {
-    Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    UINT dpi = GetDpiForWindow(hWnd);
 
-    if (x < (int32_t)MARGIN || y < (int32_t)MARGIN)
+    int scaledCell = MulDiv(CELL_SIZE, dpi, 96);
+    int borderW = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderH = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+    if (x < borderW || y < borderH)
     {
         return;
     }
 
-    uint32_t cellX = (uint32_t)(x - MARGIN) / app->renderInfo.cellSize;
-    uint32_t cellY = (uint32_t)(y - MARGIN) / app->renderInfo.cellSize;
+    uint32_t cellX = (uint32_t)(x - borderW) / (uint32_t)scaledCell;
+    uint32_t cellY = (uint32_t)(y - borderH) / (uint32_t)scaledCell;
 
     if (cellX >= app->minefield.width || cellY >= app->minefield.height)
     {
@@ -155,9 +247,9 @@ StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
         return;
     }
 
-    RECT clientRect;
-    GetClientRect(hWnd, &clientRect);
-    CalculateRenderInfo(&clientRect, app->minefield.width, app->minefield.height, &app->renderInfo);
+    app->isLeftMouseDown = false;
+    app->hoverCellX = (uint32_t)-1;
+    app->hoverCellY = (uint32_t)-1;
 
     InvalidateRect(hWnd, NULL, true);
 }
@@ -196,59 +288,24 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
         {
             Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
             DestroyApplication(app);
-            SetWindowLongPtr(hWnd, GWLP_HINSTANCE, (LONG_PTR)NULL);
-
-            return 0;
-        }
-        case WM_SIZE:
-        {
-            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-
-            if (app != NULL)
-            {
-                RECT clientRect;
-                GetClientRect(hWnd, &clientRect);
-
-                CalculateRenderInfo(&clientRect, app->minefield.width, app->minefield.height, &app->renderInfo);
-                InvalidateRect(hWnd, NULL, FALSE);
-            }
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)NULL);
 
             return 0;
         }
         case WM_PAINT:
         {
-            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
             if (app != NULL)
             {
-                RenderMinefield(app, hdc);
+                RenderGameWindow(app, hWnd, hdc);
             }
 
             EndPaint(hWnd, &ps);
 
             return 0;
-        }
-        case WM_GETMINMAXINFO:
-        {
-            const Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-
-            if (app != NULL)
-            {
-                RECT windowRect;
-                if (AdjustWindowRectForCellSize(app, hWnd, &windowRect))
-                {
-                    MINMAXINFO* pMinMaxInfo = (MINMAXINFO*)lParam;
-                    pMinMaxInfo->ptMinTrackSize.x = windowRect.right - windowRect.left;
-                    pMinMaxInfo->ptMinTrackSize.y = windowRect.bottom - windowRect.top;
-
-                    return 0;
-                }
-            }
-
-            return DefWindowProc(hWnd, uMsg, wParam, lParam);
         }
         case WM_COMMAND:
         {
@@ -286,20 +343,77 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
 
             return 0;
         }
+        case WM_MOUSEMOVE:
+        {
+            int32_t x = GET_X_LPARAM(lParam);
+            int32_t y = GET_Y_LPARAM(lParam);
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            if (app != NULL)
+            {
+                HandleMouseMove(app, hWnd, x, y);
+            }
+
+            return 0;
+        }
         case WM_LBUTTONDOWN:
         {
-            int32_t x = LOWORD(lParam);
-            int32_t y = HIWORD(lParam);
+            int32_t x = GET_X_LPARAM(lParam);
+            int32_t y = GET_Y_LPARAM(lParam);
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
-            HandleLeftMouseClick(hWnd, x, y);
+            if (app != NULL)
+            {
+                HandleLeftMouseDown(app, hWnd, x, y);
+            }
+
+            return 0;
+        }
+        case WM_LBUTTONUP:
+        {
+            int32_t x = GET_X_LPARAM(lParam);
+            int32_t y = GET_Y_LPARAM(lParam);
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            if (app != NULL)
+            {
+                HandleLeftMouseUp(app, hWnd, x, y);
+            }
+
             return 0;
         }
         case WM_RBUTTONDOWN:
         {
-            int32_t x = LOWORD(lParam);
-            int32_t y = HIWORD(lParam);
+            int32_t x = GET_X_LPARAM(lParam);
+            int32_t y = GET_Y_LPARAM(lParam);
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
-            HandleRightMouseClick(hWnd, x, y);
+            if (app != NULL)
+            {
+                HandleRightMouseClick(app, hWnd, x, y);
+            }
+
+            return 0;
+        }
+        case WM_DPICHANGED:
+        {
+            RECT* const prcNewWindow = (RECT*)lParam;
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            SetWindowPos(
+                hWnd,
+                NULL,
+                prcNewWindow->left,
+                prcNewWindow->top,
+                prcNewWindow->right - prcNewWindow->left,
+                prcNewWindow->bottom - prcNewWindow->top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+
+            if (app != NULL)
+            {
+                ResizeWindowForMinefield(app, hWnd);
+            }
+
             return 0;
         }
     }
@@ -312,7 +426,7 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
 {
     WNDCLASSEX wc = {
         .cbSize = sizeof(WNDCLASSEX),
-        .style = CS_HREDRAW | CS_VREDRAW,
+        .style = 0,
         .lpfnWndProc = WindowProc,
         .cbClsExtra = 0,
         .cbWndExtra = 0,
@@ -321,26 +435,28 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
         .hCursor = LoadCursorW(NULL, IDC_ARROW),
         .hbrBackground = (HBRUSH)(COLOR_WINDOW + 1),
         .lpszMenuName = NULL,
-        .lpszClassName = CLASS_NAME,
+        .lpszClassName = L"Minesweeper",
         .hIconSm = NULL,
     };
 
-    if (!RegisterClassExW(&wc))
+    ATOM classAtom = RegisterClassExW(&wc);
+
+    if (classAtom == 0)
         return NULL;
 
     Application* app = CreateApplication(hInstance);
 
     if (app == NULL)
     {
-        UnregisterClassW(CLASS_NAME, hInstance);
+        UnregisterClassW(MAKEINTATOM(classAtom), hInstance);
         return NULL;
     }
 
     HWND hWnd = CreateWindowExW(
         0,
-        CLASS_NAME,
+        MAKEINTATOM(classAtom),
         L"Minesweeper",
-        WS_OVERLAPPEDWINDOW | WS_THICKFRAME,
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         1280,
@@ -352,7 +468,7 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
 
     if (hWnd == NULL)
     {
-        UnregisterClassW(CLASS_NAME, hInstance);
+        UnregisterClassW(MAKEINTATOM(classAtom), hInstance);
         DestroyApplication(app);
 
         return NULL;

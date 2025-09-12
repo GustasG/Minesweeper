@@ -13,10 +13,9 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (United Kingdom) resources
+// English (United States) resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 
 #ifdef APSTUDIO_INVOKED
@@ -43,17 +42,10 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
-
-#endif    // English (United Kingdom) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Lithuanian (Lithuania) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_LTH)
-LANGUAGE LANG_LITHUANIAN, SUBLANG_LITHUANIAN
-#pragma code_page(1257)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -93,7 +85,7 @@ END
 
 IDR_ACCELERATOR1 ACCELERATORS
 BEGIN
-    VK_F2, IDM_GAME_NEW, VIRTKEY
+    VK_F2,          IDM_GAME_NEW,           VIRTKEY 
 END
 
 
@@ -130,13 +122,29 @@ IDB_CELLUP              BITMAP                  "assets/cells/cellup.bmp"
 
 IDB_FALSEMINE           BITMAP                  "assets/cells/falsemine.bmp"
 
-IDB_LOST_FACE           BITMAP                  "assets\\faces\\lostface.bmp"
+IDB_LOST_FACE           BITMAP                  "assets/faces/lostface.bmp"
 
-IDB_SMILE_FACE          BITMAP                  "assets\\faces\\smileface.bmp"
+IDB_SMILE_FACE          BITMAP                  "assets/faces/smileface.bmp"
 
-IDB_SMILE_FACE_DOWN     BITMAP                  "assets\\faces\\smilefacedown.bmp"
+IDB_SMILE_FACE_DOWN     BITMAP                  "assets/faces/smilefacedown.bmp"
 
-IDB_WIN_FACE            BITMAP                  "assets\\faces\\winface.bmp"
+IDB_WIN_FACE            BITMAP                  "assets/faces/winface.bmp"
+
+IDB_BORDER_BOTTOM       BITMAP                  "assets/border/bottom.bmp"
+
+IDB_BORDER_BOTTOM_LEFT  BITMAP                  "assets/border/bottomleft.bmp"
+
+IDB_BORDER_BOTTOM_RIGHT BITMAP                  "assets/border/bottomright.bmp"
+
+IDB_BORDER_LEFT         BITMAP                  "assets/border/left.bmp"
+
+IDB_BORDER_RIGHT        BITMAP                  "assets/border/right.bmp"
+
+IDB_BORDER_TOP          BITMAP                  "assets/border/top.bmp"
+
+IDB_BORDER_TOP_LEFT     BITMAP                  "assets/border/topleft.bmp"
+
+IDB_BORDER_TOP_RIGHT    BITMAP                  "assets/border/topright.bmp"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -146,10 +154,46 @@ IDB_WIN_FACE            BITMAP                  "assets\\faces\\winface.bmp"
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON1               ICON                    "assets\\Minesweeper.ico"
-
-#endif    // Lithuanian (Lithuania) resources
+IDI_ICON1               ICON                    "assets/Minesweeper.ico"
 /////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName", ""
+            VALUE "FileDescription", "Minesweeper"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "Minesweeper.exe"
+            VALUE "OriginalFilename", "Minesweeper.exe"
+            VALUE "ProductName", "Minesweeper"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1252
+    END
+END
 
 
 

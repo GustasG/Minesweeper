@@ -25,17 +25,25 @@ typedef struct
 
 typedef struct
 {
-    uint32_t cellSize;
-    uint32_t boardWidth;
-    uint32_t boardHeight;
-} RenderInfo;
+    HBITMAP bottom;
+    HBITMAP bottomLeft;
+    HBITMAP bottomRight;
+    HBITMAP left;
+    HBITMAP right;
+    HBITMAP top;
+    HBITMAP topLeft;
+    HBITMAP topRight;
+} BorderResources;
 
 typedef struct
 {
     Minefield minefield;
     CellResources cellResources;
     FaceResources faceResources;
-    RenderInfo renderInfo;
+    BorderResources borderResources;
+    uint32_t hoverCellX;
+    uint32_t hoverCellY;
+    bool isLeftMouseDown;
 } Application;
 
 _Ret_maybenull_ Application* CreateApplication(_In_ HINSTANCE hInstance);

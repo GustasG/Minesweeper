@@ -1,9 +1,10 @@
 #pragma once
 
-#define NO_MIN_MAX
+#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
+#include <Windowsx.h>
 
 #include <stdbool.h>
 #include <stdint.h>

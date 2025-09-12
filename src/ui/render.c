@@ -3,56 +3,57 @@
 #include "ui/render.h"
 #include "ui/window.h"
 
-void
-CalculateRenderInfo(
-    _In_ const RECT* clientRect,
-    _In_ uint32_t minefieldWidth,
-    _In_ uint32_t minefieldHeight,
-    _Out_ RenderInfo* renderInfo)
+static void
+BlitBitmapScaled(
+    _In_ HDC hdcDest,
+    _In_ HDC hdcSrc,
+    _In_opt_ HBITMAP bitmap,
+    _In_ int xDest,
+    _In_ int yDest,
+    _In_ int wDest,
+    _In_ int hDest)
 {
-    if (minefieldWidth == 0 || minefieldHeight == 0)
-    {
-        renderInfo->cellSize = MIN_CELL_SIZE;
-        renderInfo->boardWidth = 0;
-        renderInfo->boardHeight = 0;
+    if (bitmap == NULL || wDest <= 0 || hDest <= 0)
         return;
-    }
 
-    uint32_t availableWidth = (uint32_t)(clientRect->right - clientRect->left) - (MARGIN * 2);
-    uint32_t availableHeight = (uint32_t)(clientRect->bottom - clientRect->top) - (MARGIN * 2);
+    BITMAP bm;
+    GetObjectW(bitmap, sizeof(BITMAP), &bm);
 
-    uint32_t cellSizeByWidth = availableWidth / minefieldWidth;
-    uint32_t cellSizeByHeight = availableHeight / minefieldHeight;
-
-    uint32_t cellSize = max(cellSizeByWidth, cellSizeByHeight);
-    cellSize = max(cellSize, MIN_CELL_SIZE);
-
-    if (cellSize * minefieldWidth > availableWidth || cellSize * minefieldHeight > availableHeight)
-    {
-        cellSize = min(cellSizeByWidth, cellSizeByHeight);
-        cellSize = max(cellSize, MIN_CELL_SIZE);
-    }
-
-    renderInfo->cellSize = cellSize;
-    renderInfo->boardWidth = minefieldWidth * cellSize;
-    renderInfo->boardHeight = minefieldHeight * cellSize;
+    HBITMAP old = (HBITMAP)SelectObject(hdcSrc, bitmap);
+    StretchBlt(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    SelectObject(hdcSrc, old);
 }
 
-static HBITMAP
+static _Ret_maybenull_ HBITMAP
 GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint32_t x, _In_ uint32_t y)
 {
-    if (app->minefield.state == GAME_LOST && cell->state == CELL_HIDDEN && cell->hasMine)
-    {
-        if (x != app->minefield.blastX || y != app->minefield.blastY)
-        {
-            return app->cellResources.mine;
-        }
-    }
-
     switch (cell->state)
     {
         case CELL_HIDDEN:
         {
+            switch (app->minefield.state)
+            {
+                case GAME_PLAYING:
+                {
+                    if (app->isLeftMouseDown && x == app->hoverCellX && y == app->hoverCellY)
+                        return app->cellResources.down;
+
+                    break;
+                }
+                case GAME_WON:
+                    break;
+                case GAME_LOST:
+                {
+                    if (cell->hasMine)
+                    {
+                        if (x != app->minefield.blastX || y != app->minefield.blastY)
+                            return app->cellResources.mine;
+                    }
+
+                    break;
+                }
+            }
+
             return app->cellResources.up;
         }
         case CELL_REVEALED:
@@ -60,9 +61,7 @@ GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint3
             if (cell->hasMine)
             {
                 if (app->minefield.state == GAME_LOST && x == app->minefield.blastX && y == app->minefield.blastY)
-                {
                     return app->cellResources.blast;
-                }
 
                 return app->cellResources.mine;
             }
@@ -72,9 +71,7 @@ GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint3
         case CELL_FLAGGED:
         {
             if (app->minefield.state == GAME_LOST && !cell->hasMine)
-            {
                 return app->cellResources.falseMine;
-            }
 
             return app->cellResources.flag;
         }
@@ -83,7 +80,7 @@ GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint3
     return NULL;
 }
 
-static HBITMAP
+static _Ret_maybenull_ HBITMAP
 GetCellNumber(_In_ const Application* app, _In_ const Cell* cell)
 {
     if (cell->state == CELL_REVEALED && !cell->hasMine && cell->neighborMines > 0 &&
@@ -114,72 +111,69 @@ RenderSingleCell(
     int cellWidth = cellRect->right - cellRect->left;
     int cellHeight = cellRect->bottom - cellRect->top;
 
-    if (backgroundBitmap != NULL)
-    {
-        BITMAP bm;
-        GetObjectW(backgroundBitmap, sizeof(BITMAP), &bm);
-
-        HBITMAP hOldBitmap = SelectObject(hdcMem, backgroundBitmap);
-
-        StretchBlt(
-            hdc,
-            cellRect->left,
-            cellRect->top,
-            cellWidth,
-            cellHeight,
-            hdcMem,
-            0,
-            0,
-            bm.bmWidth,
-            bm.bmHeight,
-            SRCCOPY);
-
-        SelectObject(hdcMem, hOldBitmap);
-    }
-
-    if (numberBitmap != NULL)
-    {
-        BITMAP bm;
-        GetObjectW(numberBitmap, sizeof(BITMAP), &bm);
-
-        HBITMAP hOldBitmap = SelectObject(hdcMem, numberBitmap);
-
-        StretchBlt(
-            hdc,
-            cellRect->left,
-            cellRect->top,
-            cellWidth,
-            cellHeight,
-            hdcMem,
-            0,
-            0,
-            bm.bmWidth,
-            bm.bmHeight,
-            SRCCOPY);
-
-        SelectObject(hdcMem, hOldBitmap);
-    }
+    BlitBitmapScaled(hdc, hdcMem, backgroundBitmap, cellRect->left, cellRect->top, cellWidth, cellHeight);
+    BlitBitmapScaled(hdc, hdcMem, numberBitmap, cellRect->left, cellRect->top, cellWidth, cellHeight);
 }
 
-void
-RenderMinefield(_In_ const Application* app, _In_ HDC hdc)
+static void
+RenderBorders(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    HDC hdcMem = CreateCompatibleDC(hdc);
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+
+    int boardWidth = (int)(app->minefield.width * cellSize);
+    int boardHeight = (int)(app->minefield.height * cellSize);
+    int rightEdge = borderWidth + boardWidth;
+    int bottomEdge = borderHeight + boardHeight;
+
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.topLeft, 0, 0, borderWidth, borderHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.topRight, rightEdge, 0, borderWidth, borderHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottomLeft, 0, bottomEdge, borderWidth, borderHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottomRight, rightEdge, bottomEdge, borderWidth, borderHeight);
+
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.top, borderWidth, 0, boardWidth, borderHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottom, borderWidth, bottomEdge, boardWidth, borderHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.left, 0, borderHeight, borderWidth, boardHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.right, rightEdge, borderHeight, borderWidth, boardHeight);
+}
+
+static void
+RenderCells(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc, _In_ HDC hdcMem)
+{
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
+    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
+    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
 
     for (uint32_t y = 0; y < app->minefield.height; y++)
     {
         for (uint32_t x = 0; x < app->minefield.width; x++)
         {
             RECT cellRect = {
-                (LONG)(MARGIN + x * app->renderInfo.cellSize),
-                (LONG)(MARGIN + y * app->renderInfo.cellSize),
-                (LONG)(MARGIN + (x + 1) * app->renderInfo.cellSize),
-                (LONG)(MARGIN + (y + 1) * app->renderInfo.cellSize),
+                .left = (LONG)(borderWidth + (int)(x * cellSize)),
+                .top = (LONG)(borderHeight + (int)(y * cellSize)),
+                .right = (LONG)(borderWidth + (int)((x + 1) * cellSize)),
+                .bottom = (LONG)(borderHeight + (int)((y + 1) * cellSize)),
             };
 
             RenderSingleCell(app, hdc, hdcMem, &cellRect, x, y);
         }
     }
+}
 
+void
+RenderGameWindow(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc)
+{
+    HDC hdcMem = CreateCompatibleDC(hdc);
+    int oldMode = SetStretchBltMode(hdc, HALFTONE);
+
+    RenderBorders(app, hWnd, hdc, hdcMem);
+    RenderCells(app, hWnd, hdc, hdcMem);
+
+    SetStretchBltMode(hdc, oldMode);
     DeleteDC(hdcMem);
 }
