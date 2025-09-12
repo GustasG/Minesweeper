@@ -241,6 +241,8 @@ CreateApplication(_In_ HINSTANCE hInstance)
     app->metrics.cellSize = (uint32_t)CELL_SIZE;
     app->metrics.borderWidth = (uint32_t)BORDER_WIDTH;
     app->metrics.borderHeight = (uint32_t)BORDER_HEIGHT;
+    app->metrics.timerBorderWidth = (uint32_t)TIMER_BORDER_WIDTH;
+    app->metrics.timerAreaHeight = (uint32_t)TIMER_AREA_HEIGHT;
 
     app->hoverCellX = (uint32_t)-1;
     app->hoverCellY = (uint32_t)-1;

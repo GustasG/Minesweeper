@@ -45,6 +45,8 @@ typedef struct
     uint32_t cellSize;
     uint32_t borderWidth;
     uint32_t borderHeight;
+    uint32_t timerBorderWidth;
+    uint32_t timerAreaHeight;
 } LayoutMetrics;
 
 typedef struct

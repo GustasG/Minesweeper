@@ -143,13 +143,14 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
     uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
     uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
-    uint32_t rightEdge = app->metrics.borderWidth + boardWidth;
-    uint32_t bottomEdge = app->metrics.borderHeight + boardHeight;
+    uint32_t gridRightEdge = app->metrics.borderWidth + boardWidth;
+    uint32_t gridTopY = app->metrics.borderHeight + app->metrics.timerAreaHeight + app->metrics.borderHeight;
+    uint32_t bottomEdge = gridTopY + boardHeight;
 
     BlitBitmapScaled(
         hdc,
         hdcMem,
-        app->borderResources.middleLeft,
+        app->borderResources.topLeft,
         0,
         0,
         app->metrics.borderWidth,
@@ -167,8 +168,8 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
     BlitBitmapScaled(
         hdc,
         hdcMem,
-        app->borderResources.middleRight,
-        rightEdge,
+        app->borderResources.topRight,
+        gridRightEdge,
         0,
         app->metrics.borderWidth,
         app->metrics.borderHeight);
@@ -180,14 +181,52 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         0,
         app->metrics.borderHeight,
         app->metrics.borderWidth,
-        boardHeight);
+        app->metrics.timerAreaHeight);
 
     BlitBitmapScaled(
         hdc,
         hdcMem,
         app->borderResources.right,
-        rightEdge,
+        gridRightEdge,
         app->metrics.borderHeight,
+        app->metrics.borderWidth,
+        app->metrics.timerAreaHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.middleLeft,
+        0,
+        gridTopY - app->metrics.borderHeight,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.top,
+        app->metrics.borderWidth,
+        gridTopY - app->metrics.borderHeight,
+        boardWidth,
+        app->metrics.borderHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.middleRight,
+        gridRightEdge,
+        gridTopY - app->metrics.borderHeight,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
+
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.left, 0, gridTopY, app->metrics.borderWidth, boardHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.right,
+        gridRightEdge,
+        gridTopY,
         app->metrics.borderWidth,
         boardHeight);
 
@@ -213,7 +252,7 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         hdc,
         hdcMem,
         app->borderResources.bottomRight,
-        rightEdge,
+        gridRightEdge,
         bottomEdge,
         app->metrics.borderWidth,
         app->metrics.borderHeight);
@@ -222,15 +261,22 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 static void
 RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
+    uint32_t cellSize = app->metrics.cellSize;
+    uint32_t originX = app->metrics.borderWidth;
+    uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.timerAreaHeight;
+
     for (uint32_t y = 0; y < app->minefield.height; y++)
     {
         for (uint32_t x = 0; x < app->minefield.width; x++)
         {
+            uint32_t left = originX + (x * cellSize);
+            uint32_t top = originY + (y * cellSize);
+
             RECT cellRect = {
-                .left = (LONG)(app->metrics.borderWidth + x * app->metrics.cellSize),
-                .top = (LONG)(app->metrics.borderHeight + y * app->metrics.cellSize),
-                .right = (LONG)(app->metrics.borderWidth + (x + 1u) * app->metrics.cellSize),
-                .bottom = (LONG)(app->metrics.borderHeight + (y + 1u) * app->metrics.cellSize),
+                .left = (LONG)left,
+                .top = (LONG)top,
+                .right = (LONG)(left + cellSize),
+                .bottom = (LONG)(top + cellSize),
             };
 
             RenderGridCell(app, hdc, hdcMem, &cellRect, x, y);

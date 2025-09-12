@@ -6,6 +6,38 @@
 #include "ui/render.h"
 #include "ui/window.h"
 
+_Success_(return) static bool TryGetCellFromPoint(
+    _In_ const Application* app,
+    _In_ int32_t x,
+    _In_ int32_t y,
+    _Out_ uint32_t* outX,
+    _Out_ uint32_t* outY)
+{
+    int32_t originX = (int32_t)app->metrics.borderWidth;
+    int32_t originY = (int32_t)(app->metrics.borderHeight + app->metrics.timerAreaHeight + app->metrics.borderHeight);
+
+    if (x < originX || y < originY)
+        return false;
+
+    int32_t relX = x - originX;
+    int32_t relY = y - originY;
+    int32_t cellSize = (int32_t)app->metrics.cellSize;
+
+    if (cellSize <= 0)
+        return false;
+
+    uint32_t cellX = (uint32_t)(relX / cellSize);
+    uint32_t cellY = (uint32_t)(relY / cellSize);
+
+    if (cellX >= app->minefield.width || cellY >= app->minefield.height)
+        return false;
+
+    *outX = cellX;
+    *outY = cellY;
+
+    return true;
+}
+
 static bool
 IsDarkModeEnabled(void)
 {
@@ -48,14 +80,23 @@ UpdateLayoutMetricsForWindow(_Inout_ Application* app, _In_ HWND hWnd)
     app->metrics.cellSize = (uint32_t)MulDiv(CELL_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
     app->metrics.borderWidth = (uint32_t)MulDiv(BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
     app->metrics.borderHeight = (uint32_t)MulDiv(BORDER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.timerBorderWidth = (uint32_t)MulDiv(TIMER_BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.timerAreaHeight = (uint32_t)MulDiv(TIMER_AREA_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
 }
 
 _Success_(
     return) static bool AdjustWindowRectForCellSize(_In_ const Application* app, _In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
     UINT dpi = GetDpiForWindow(hWnd);
-    uint32_t minClientWidth = app->minefield.width * app->metrics.cellSize + 2u * app->metrics.borderWidth;
-    uint32_t minClientHeight = app->minefield.height * app->metrics.cellSize + 2u * app->metrics.borderHeight;
+
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
+
+    // left border + grid + right border
+    uint32_t minClientWidth = boardWidth + 2u * app->metrics.borderWidth;
+
+    // top border + counter area + middle part (border) + grid + bottom border
+    uint32_t minClientHeight = boardHeight + (3u * app->metrics.borderHeight) + app->metrics.timerAreaHeight;
 
     lpRect->left = 0;
     lpRect->top = 0;
@@ -107,22 +148,12 @@ HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int3
 
     uint32_t prevX = app->hoverCellX;
     uint32_t prevY = app->hoverCellY;
+    uint32_t cellX, cellY;
 
-    if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
     {
-        uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
-        uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
-
-        if (cellX < app->minefield.width && cellY < app->minefield.height)
-        {
-            app->hoverCellX = cellX;
-            app->hoverCellY = cellY;
-        }
-        else
-        {
-            app->hoverCellX = (uint32_t)-1;
-            app->hoverCellY = (uint32_t)-1;
-        }
+        app->hoverCellX = cellX;
+        app->hoverCellY = cellY;
     }
     else
     {
@@ -139,24 +170,15 @@ HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int3
 static void
 HandleLeftMouseDown(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 {
-    SetCapture(hWnd);
+    uint32_t cellX, cellY;
     app->isLeftMouseDown = true;
 
-    if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
-    {
-        uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
-        uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
+    SetCapture(hWnd);
 
-        if (cellX < app->minefield.width && cellY < app->minefield.height)
-        {
-            app->hoverCellX = cellX;
-            app->hoverCellY = cellY;
-        }
-        else
-        {
-            app->hoverCellX = (uint32_t)-1;
-            app->hoverCellY = (uint32_t)-1;
-        }
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
+    {
+        app->hoverCellX = cellX;
+        app->hoverCellY = cellY;
     }
     else
     {
@@ -174,20 +196,16 @@ HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ in
 
     if (app->isLeftMouseDown)
     {
-        ReleaseCapture();
+        uint32_t cellX, cellY;
         app->isLeftMouseDown = false;
 
-        if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
-        {
-            uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
-            uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
+        ReleaseCapture();
 
-            if (cellX < app->minefield.width && cellY < app->minefield.height)
+        if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
+        {
+            if (RevealCell(&app->minefield, cellX, cellY))
             {
-                if (RevealCell(&app->minefield, cellX, cellY))
-                {
-                    revealed = true;
-                }
+                revealed = true;
             }
         }
     }
@@ -209,20 +227,9 @@ HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ in
 static void
 HandleRightMouseClick(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 {
-    if (x < (int32_t)app->metrics.borderWidth || y < (int32_t)app->metrics.borderHeight)
-    {
-        return;
-    }
+    uint32_t cellX, cellY;
 
-    uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
-    uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
-
-    if (cellX >= app->minefield.width || cellY >= app->minefield.height)
-    {
-        return;
-    }
-
-    if (ToggleFlag(&app->minefield, cellX, cellY))
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY) && ToggleFlag(&app->minefield, cellX, cellY))
     {
         InvalidateRect(hWnd, NULL, false);
     }
@@ -459,7 +466,7 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
         .hInstance = hInstance,
         .hIcon = LoadIconW(hInstance, MAKEINTRESOURCE(IDI_ICON1)),
         .hCursor = LoadCursorW(NULL, IDC_ARROW),
-        .hbrBackground = (HBRUSH)(COLOR_WINDOW + 1),
+        .hbrBackground = GetStockObject(LTGRAY_BRUSH),
         .lpszMenuName = NULL,
         .lpszClassName = L"Minesweeper",
         .hIconSm = NULL,
