@@ -29,6 +29,11 @@ typedef struct
     HBITMAP bottomLeft;
     HBITMAP bottomRight;
     HBITMAP left;
+    HBITMAP middleLeft;
+    HBITMAP middleRight;
+    HBITMAP counterLeft;
+    HBITMAP counterMiddle;
+    HBITMAP counterRight;
     HBITMAP right;
     HBITMAP top;
     HBITMAP topLeft;
@@ -37,10 +42,18 @@ typedef struct
 
 typedef struct
 {
+    uint32_t cellSize;
+    uint32_t borderWidth;
+    uint32_t borderHeight;
+} LayoutMetrics;
+
+typedef struct
+{
     Minefield minefield;
     CellResources cellResources;
     FaceResources faceResources;
     BorderResources borderResources;
+    LayoutMetrics metrics;
     uint32_t hoverCellX;
     uint32_t hoverCellY;
     bool isLeftMouseDown;

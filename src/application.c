@@ -2,6 +2,7 @@
 
 #include "application.h"
 #include "resource.h"
+#include "ui/window.h"
 
 static void
 UnloadCellResources(_In_ CellResources* resources)
@@ -61,6 +62,21 @@ UnloadBorderResources(_In_ BorderResources* resources)
 
     if (resources->left != NULL)
         DeleteObject(resources->left);
+
+    if (resources->middleLeft != NULL)
+        DeleteObject(resources->middleLeft);
+
+    if (resources->middleRight != NULL)
+        DeleteObject(resources->middleRight);
+
+    if (resources->counterLeft != NULL)
+        DeleteObject(resources->counterLeft);
+
+    if (resources->counterMiddle != NULL)
+        DeleteObject(resources->counterMiddle);
+
+    if (resources->counterRight != NULL)
+        DeleteObject(resources->counterRight);
 
     if (resources->right != NULL)
         DeleteObject(resources->right);
@@ -157,6 +173,21 @@ LoadBorderResources(_In_ BorderResources* resources, _In_ HINSTANCE hInstance)
     if ((resources->left = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_LEFT))) == NULL)
         return false;
 
+    if ((resources->middleLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_LEFT))) == NULL)
+        return false;
+
+    if ((resources->middleRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->counterLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_LEFT))) == NULL)
+        return false;
+
+    if ((resources->counterMiddle = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_MIDDLE))) == NULL)
+        return false;
+
+    if ((resources->counterRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_RIGHT))) == NULL)
+        return false;
+
     if ((resources->right = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_RIGHT))) == NULL)
         return false;
 
@@ -206,6 +237,10 @@ CreateApplication(_In_ HINSTANCE hInstance)
         HeapFree(hHeap, 0, app);
         return NULL;
     }
+
+    app->metrics.cellSize = (uint32_t)CELL_SIZE;
+    app->metrics.borderWidth = (uint32_t)BORDER_WIDTH;
+    app->metrics.borderHeight = (uint32_t)BORDER_HEIGHT;
 
     app->hoverCellX = (uint32_t)-1;
     app->hoverCellY = (uint32_t)-1;

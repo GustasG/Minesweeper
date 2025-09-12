@@ -5,6 +5,7 @@
 
 #include <Windows.h>
 #include <Windowsx.h>
+#include <dwmapi.h>
 
 #include <stdbool.h>
 #include <stdint.h>

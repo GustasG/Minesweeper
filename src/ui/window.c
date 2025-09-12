@@ -6,17 +6,56 @@
 #include "ui/render.h"
 #include "ui/window.h"
 
+static bool
+IsDarkModeEnabled(void)
+{
+    DWORD value = 1; // 1 = light, 0 = dark
+    HKEY hKey;
+
+    if (RegOpenKeyExW(
+            HKEY_CURRENT_USER,
+            L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+            0,
+            KEY_READ,
+            &hKey) == ERROR_SUCCESS)
+    {
+        DWORD size = sizeof(value);
+        RegQueryValueExW(hKey, L"AppsUseLightTheme", NULL, NULL, (LPBYTE)&value, &size);
+        RegCloseKey(hKey);
+    }
+
+    return value == 0;
+}
+
+static void
+ApplyDwmWindowAttributes(_In_ HWND hWnd)
+{
+    const BOOL useDark = IsDarkModeEnabled();
+    (void)DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
+
+    const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
+    (void)DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+
+    const int backdrop = DWMWA_NCRENDERING_POLICY;
+    (void)DwmSetWindowAttribute(hWnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(backdrop));
+}
+
+static void
+UpdateLayoutMetricsForWindow(_Inout_ Application* app, _In_ HWND hWnd)
+{
+    UINT dpi = GetDpiForWindow(hWnd);
+
+    app->metrics.cellSize = (uint32_t)MulDiv(CELL_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.borderWidth = (uint32_t)MulDiv(BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.borderHeight = (uint32_t)MulDiv(BORDER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
+}
+
 _Success_(
     return) static bool AdjustWindowRectForCellSize(_In_ const Application* app, _In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
     UINT dpi = GetDpiForWindow(hWnd);
-
-    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
-
-    uint32_t minClientWidth = app->minefield.width * (uint32_t)cellSize + (uint32_t)(2 * borderWidth);
-    uint32_t minClientHeight = app->minefield.height * (uint32_t)cellSize + (uint32_t)(2 * borderHeight);
+    uint32_t minClientWidth = app->minefield.width * app->metrics.cellSize + 2u * app->metrics.borderWidth;
+    uint32_t minClientHeight = app->minefield.height * app->metrics.cellSize + 2u * app->metrics.borderHeight;
 
     lpRect->left = 0;
     lpRect->top = 0;
@@ -69,16 +108,10 @@ HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int3
     uint32_t prevX = app->hoverCellX;
     uint32_t prevY = app->hoverCellY;
 
-    UINT dpi = GetDpiForWindow(hWnd);
-
-    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
-
-    if (x >= borderWidth && y >= borderHeight)
+    if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
     {
-        uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
-        uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+        uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
+        uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
 
         if (cellX < app->minefield.width && cellY < app->minefield.height)
         {
@@ -109,16 +142,10 @@ HandleLeftMouseDown(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ 
     SetCapture(hWnd);
     app->isLeftMouseDown = true;
 
-    UINT dpi = GetDpiForWindow(hWnd);
-
-    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
-
-    if (x >= borderWidth && y >= borderHeight)
+    if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
     {
-        uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
-        uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+        uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
+        uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
 
         if (cellX < app->minefield.width && cellY < app->minefield.height)
         {
@@ -150,16 +177,10 @@ HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ in
         ReleaseCapture();
         app->isLeftMouseDown = false;
 
-        UINT dpi = GetDpiForWindow(hWnd);
-
-        int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-        int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-        int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
-
-        if (x >= borderWidth && y >= borderHeight)
+        if (x >= (int32_t)app->metrics.borderWidth && y >= (int32_t)app->metrics.borderHeight)
         {
-            uint32_t cellX = (uint32_t)((x - borderWidth) / cellSize);
-            uint32_t cellY = (uint32_t)((y - borderHeight) / cellSize);
+            uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
+            uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
 
             if (cellX < app->minefield.width && cellY < app->minefield.height)
             {
@@ -188,19 +209,13 @@ HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ in
 static void
 HandleRightMouseClick(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
 {
-    UINT dpi = GetDpiForWindow(hWnd);
-
-    int scaledCell = MulDiv(CELL_SIZE, dpi, 96);
-    int borderW = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderH = MulDiv(BORDER_HEIGHT, dpi, 96);
-
-    if (x < borderW || y < borderH)
+    if (x < (int32_t)app->metrics.borderWidth || y < (int32_t)app->metrics.borderHeight)
     {
         return;
     }
 
-    uint32_t cellX = (uint32_t)(x - borderW) / (uint32_t)scaledCell;
-    uint32_t cellY = (uint32_t)(y - borderH) / (uint32_t)scaledCell;
+    uint32_t cellX = (uint32_t)((x - (int32_t)app->metrics.borderWidth) / (int32_t)app->metrics.cellSize);
+    uint32_t cellY = (uint32_t)((y - (int32_t)app->metrics.borderHeight) / (int32_t)app->metrics.cellSize);
 
     if (cellX >= app->minefield.width || cellY >= app->minefield.height)
     {
@@ -270,9 +285,11 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
         case WM_CREATE:
         {
             Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+            ApplyDwmWindowAttributes(hWnd);
 
             if (app != NULL)
             {
+                UpdateLayoutMetricsForWindow(app, hWnd);
                 StartNewGame(app, hWnd, DIFFICULTY_BEGINNER);
             }
 
@@ -300,7 +317,7 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
 
             if (app != NULL)
             {
-                RenderGameWindow(app, hWnd, hdc);
+                RenderGameWindow(app, hdc);
             }
 
             EndPaint(hWnd, &ps);
@@ -411,8 +428,17 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
 
             if (app != NULL)
             {
+                UpdateLayoutMetricsForWindow(app, hWnd);
                 ResizeWindowForMinefield(app, hWnd);
             }
+
+            return 0;
+        }
+        case WM_THEMECHANGED:
+        case WM_SETTINGCHANGE:
+        {
+            ApplyDwmWindowAttributes(hWnd);
+            InvalidateRect(hWnd, NULL, FALSE);
 
             return 0;
         }

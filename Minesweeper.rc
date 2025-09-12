@@ -92,7 +92,6 @@ END
 /////////////////////////////////////////////////////////////////////////////
 //
 // Bitmap
-//
 
 IDB_CELL1               BITMAP                  "assets/cells/cell1.bmp"
 
@@ -138,6 +137,10 @@ IDB_BORDER_BOTTOM_RIGHT BITMAP                  "assets/border/bottomright.bmp"
 
 IDB_BORDER_LEFT         BITMAP                  "assets/border/left.bmp"
 
+IDB_BORDER_MIDDLE_LEFT  BITMAP                  "assets/border/middleleft.bmp"
+
+IDB_BORDER_MIDDLE_RIGHT BITMAP                  "assets/border/middleright.bmp"
+
 IDB_BORDER_RIGHT        BITMAP                  "assets/border/right.bmp"
 
 IDB_BORDER_TOP          BITMAP                  "assets/border/top.bmp"
@@ -146,9 +149,12 @@ IDB_BORDER_TOP_LEFT     BITMAP                  "assets/border/topleft.bmp"
 
 IDB_BORDER_TOP_RIGHT    BITMAP                  "assets/border/topright.bmp"
 
+IDB_BORDER_COUNTER_LEFT BITMAP                  "assets/border/counterleft.bmp"
 
-/////////////////////////////////////////////////////////////////////////////
-//
+IDB_BORDER_COUNTER_MIDDLE BITMAP                "assets/border/countermiddle.bmp"
+
+IDB_BORDER_COUNTER_RIGHT BITMAP                 "assets/border/counterright.bmp"
+
 // Icon
 //
 
@@ -206,4 +212,5 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+
 

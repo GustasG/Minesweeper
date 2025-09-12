@@ -1,7 +1,6 @@
 #include "pch.h"
 
 #include "ui/render.h"
-#include "ui/window.h"
 
 static void
 BlitBitmapScaled(
@@ -58,20 +57,44 @@ GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint3
         }
         case CELL_REVEALED:
         {
-            if (cell->hasMine)
+            switch (app->minefield.state)
             {
-                if (app->minefield.state == GAME_LOST && x == app->minefield.blastX && y == app->minefield.blastY)
-                    return app->cellResources.blast;
+                case GAME_PLAYING:
+                    break;
+                case GAME_WON:
+                    break;
+                case GAME_LOST:
+                {
+                    if (cell->hasMine)
+                    {
+                        if (x == app->minefield.blastX && y == app->minefield.blastY)
+                            return app->cellResources.blast;
 
-                return app->cellResources.mine;
+                        return app->cellResources.mine;
+                    }
+
+                    break;
+                }
             }
 
             return app->cellResources.down;
         }
         case CELL_FLAGGED:
         {
-            if (app->minefield.state == GAME_LOST && !cell->hasMine)
-                return app->cellResources.falseMine;
+            switch (app->minefield.state)
+            {
+                case GAME_PLAYING:
+                    break;
+                case GAME_WON:
+                    break;
+                case GAME_LOST:
+                {
+                    if (cell->hasMine)
+                        return app->cellResources.falseMine;
+
+                    break;
+                }
+            }
 
             return app->cellResources.flag;
         }
@@ -93,7 +116,7 @@ GetCellNumber(_In_ const Application* app, _In_ const Cell* cell)
 }
 
 static void
-RenderSingleCell(
+RenderGridCell(
     _In_ const Application* app,
     _In_ HDC hdc,
     _In_ HDC hdcMem,
@@ -116,63 +139,113 @@ RenderSingleCell(
 }
 
 static void
-RenderBorders(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc, _In_ HDC hdcMem)
+RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    UINT dpi = GetDpiForWindow(hWnd);
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
+    uint32_t rightEdge = app->metrics.borderWidth + boardWidth;
+    uint32_t bottomEdge = app->metrics.borderHeight + boardHeight;
 
-    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.middleLeft,
+        0,
+        0,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
 
-    int boardWidth = (int)(app->minefield.width * cellSize);
-    int boardHeight = (int)(app->minefield.height * cellSize);
-    int rightEdge = borderWidth + boardWidth;
-    int bottomEdge = borderHeight + boardHeight;
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.top,
+        app->metrics.borderWidth,
+        0,
+        boardWidth,
+        app->metrics.borderHeight);
 
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.topLeft, 0, 0, borderWidth, borderHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.topRight, rightEdge, 0, borderWidth, borderHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottomLeft, 0, bottomEdge, borderWidth, borderHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottomRight, rightEdge, bottomEdge, borderWidth, borderHeight);
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.middleRight,
+        rightEdge,
+        0,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
 
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.top, borderWidth, 0, boardWidth, borderHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.bottom, borderWidth, bottomEdge, boardWidth, borderHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.left, 0, borderHeight, borderWidth, boardHeight);
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.right, rightEdge, borderHeight, borderWidth, boardHeight);
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.left,
+        0,
+        app->metrics.borderHeight,
+        app->metrics.borderWidth,
+        boardHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.right,
+        rightEdge,
+        app->metrics.borderHeight,
+        app->metrics.borderWidth,
+        boardHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.bottomLeft,
+        0,
+        bottomEdge,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.bottom,
+        app->metrics.borderWidth,
+        bottomEdge,
+        boardWidth,
+        app->metrics.borderHeight);
+
+    BlitBitmapScaled(
+        hdc,
+        hdcMem,
+        app->borderResources.bottomRight,
+        rightEdge,
+        bottomEdge,
+        app->metrics.borderWidth,
+        app->metrics.borderHeight);
 }
 
 static void
-RenderCells(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc, _In_ HDC hdcMem)
+RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    UINT dpi = GetDpiForWindow(hWnd);
-
-    int cellSize = MulDiv(CELL_SIZE, dpi, 96);
-    int borderWidth = MulDiv(BORDER_WIDTH, dpi, 96);
-    int borderHeight = MulDiv(BORDER_HEIGHT, dpi, 96);
-
     for (uint32_t y = 0; y < app->minefield.height; y++)
     {
         for (uint32_t x = 0; x < app->minefield.width; x++)
         {
             RECT cellRect = {
-                .left = (LONG)(borderWidth + (int)(x * cellSize)),
-                .top = (LONG)(borderHeight + (int)(y * cellSize)),
-                .right = (LONG)(borderWidth + (int)((x + 1) * cellSize)),
-                .bottom = (LONG)(borderHeight + (int)((y + 1) * cellSize)),
+                .left = (LONG)(app->metrics.borderWidth + x * app->metrics.cellSize),
+                .top = (LONG)(app->metrics.borderHeight + y * app->metrics.cellSize),
+                .right = (LONG)(app->metrics.borderWidth + (x + 1u) * app->metrics.cellSize),
+                .bottom = (LONG)(app->metrics.borderHeight + (y + 1u) * app->metrics.cellSize),
             };
 
-            RenderSingleCell(app, hdc, hdcMem, &cellRect, x, y);
+            RenderGridCell(app, hdc, hdcMem, &cellRect, x, y);
         }
     }
 }
 
 void
-RenderGameWindow(_In_ const Application* app, _In_ HWND hWnd, _In_ HDC hdc)
+RenderGameWindow(_In_ const Application* app, _In_ HDC hdc)
 {
     HDC hdcMem = CreateCompatibleDC(hdc);
     int oldMode = SetStretchBltMode(hdc, HALFTONE);
 
-    RenderBorders(app, hWnd, hdc, hdcMem);
-    RenderCells(app, hWnd, hdc, hdcMem);
+    RenderBorders(app, hdc, hdcMem);
+    RenderGrid(app, hdc, hdcMem);
 
     SetStretchBltMode(hdc, oldMode);
     DeleteDC(hdcMem);

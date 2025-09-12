@@ -71,6 +71,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -99,6 +100,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -138,7 +140,12 @@
     <Image Include="assets\border\bottom.bmp" />
     <Image Include="assets\border\bottomleft.bmp" />
     <Image Include="assets\border\bottomright.bmp" />
+    <Image Include="assets\border\counterleft.bmp" />
+    <Image Include="assets\border\countermiddle.bmp" />
+    <Image Include="assets\border\counterright.bmp" />
     <Image Include="assets\border\left.bmp" />
+    <Image Include="assets\border\middleleft.bmp" />
+    <Image Include="assets\border\middleright.bmp" />
     <Image Include="assets\border\right.bmp" />
     <Image Include="assets\border\top.bmp" />
     <Image Include="assets\border\topleft.bmp" />
