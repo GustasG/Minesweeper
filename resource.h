@@ -48,18 +48,18 @@
 #define IDB_COUNTER7                    146
 #define IDB_COUNTER8                    147
 #define IDB_COUNTER9                    148
+#define IDD_CUSTOM_GAME                 200
+#define IDC_CUSTOM_WIDTH                1001
+#define IDC_CUSTOM_HEIGHT               1002
+#define IDC_CUSTOM_MINES                1003
 #define IDM_GAME_NEW                    40015
 #define IDM_GAME_BEGINNER               40016
 #define IDM_GAME_INTERMEDIATE           40017
 #define IDM_GAME_EXPERT                 40018
 #define IDM_GAME_CUSTOM                 40019
-#define IDM_GAME_LEADERBOARD            40020
 #define IDM_GAME_EXIT                   40021
 #define IDM_HELP_ABOUT                  40023
-#define IDM_GAME_BEST_TIMES             40027
-#define IDM_GAME_MARKS                  40029
-#define IDM_GAME_COLORS                 40030
-#define IDM_GAME_SOUND                  40031
+// Removed unused command IDs: leaderboard, best times, marks, color, sound
 
 // Next default values for new objects
 //

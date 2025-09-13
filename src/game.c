@@ -175,6 +175,44 @@ CreateMinefield(_Out_ Minefield* field, _In_ Difficulty difficulty)
 }
 
 bool
+CreateCustomMinefield(_Out_ Minefield* field, _In_ uint32_t width, _In_ uint32_t height, _In_ uint32_t totalMines)
+{
+    ZeroMemory(field, sizeof(Minefield));
+    field->width = width;
+    field->height = height;
+    field->totalMines = totalMines;
+
+    uint32_t maxMines = (width * height);
+
+    if (width == 0 || height == 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    if (totalMines >= maxMines)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    if (width > MAX_CELLS_HORIZONTALLY || height > MAX_CELLS_VERTICALLY)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return false;
+    }
+
+    field->difficulty = DIFFICULTY_CUSTOM;
+    field->state = GAME_PLAYING;
+    field->flaggedCells = 0;
+    field->revealedCells = 0;
+    field->firstClick = true;
+    field->startTime = 0;
+
+    return true;
+}
+
+bool
 RevealCell(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y)
 {
     if (x >= field->width || y >= field->height || field->state != GAME_PLAYING)

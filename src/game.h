@@ -56,6 +56,8 @@ typedef struct
 
 bool CreateMinefield(_Out_ Minefield* field, _In_ Difficulty difficulty);
 
+bool CreateCustomMinefield(_Out_ Minefield* field, _In_ uint32_t width, _In_ uint32_t height, _In_ uint32_t totalMines);
+
 bool RevealCell(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y);
 
 bool ToggleFlag(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y);

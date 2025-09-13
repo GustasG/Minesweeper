@@ -166,38 +166,13 @@ ResizeWindowForMinefield(_In_ const Application* app, _In_ HWND hWnd)
         SWP_NOMOVE | SWP_NOZORDER);
 }
 
-static void
-StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
+static bool
+InitNewGame(_Inout_ Application* app, _In_ HWND hWnd)
 {
-    if (!CreateMinefield(&app->minefield, difficulty))
-    {
-        DWORD error = GetLastError();
-        wchar_t errorMsg[256];
-
-        switch (error)
-        {
-            case ERROR_NOT_ENOUGH_MEMORY:
-                wcscpy_s(errorMsg, ARRAYSIZE(errorMsg), L"Not enough memory to create minefield!");
-                break;
-            case ERROR_INVALID_PARAMETER:
-                wcscpy_s(errorMsg, ARRAYSIZE(errorMsg), L"Invalid difficulty settings!");
-                break;
-            case ERROR_ARITHMETIC_OVERFLOW:
-                wcscpy_s(errorMsg, ARRAYSIZE(errorMsg), L"Minefield too large!");
-                break;
-            default:
-                swprintf_s(errorMsg, ARRAYSIZE(errorMsg), L"Failed to create minefield! Error: %lu", error);
-                break;
-        }
-
-        MessageBoxW(hWnd, errorMsg, L"Error", MB_OK | MB_ICONERROR);
-        return;
-    }
-
     if (!ResizeWindowForMinefield(app, hWnd))
     {
         MessageBoxW(hWnd, L"Minefield too large for display!", L"Error", MB_OK | MB_ICONWARNING);
-        return;
+        return false;
     }
 
     app->isLeftMouseDown = false;
@@ -205,6 +180,125 @@ StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
     app->hoverCellY = (uint32_t)-1;
 
     InvalidateRect(hWnd, NULL, TRUE);
+    return true;
+}
+
+static void
+StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
+{
+    if (difficulty == DIFFICULTY_CUSTOM)
+    {
+        uint32_t w = app->minefield.width;
+        uint32_t h = app->minefield.height;
+        uint32_t m = app->minefield.totalMines;
+
+        if (!CreateCustomMinefield(&app->minefield, w, h, m))
+        {
+            MessageBoxW(hWnd, L"Failed to create grid. Check your settings", L"Error", MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+    else
+    {
+        if (!CreateMinefield(&app->minefield, difficulty))
+        {
+            MessageBoxW(hWnd, L"Failed to create grid. Check your settings", L"Error", MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+
+    InitNewGame(app, hWnd);
+}
+
+static void
+StartNewGameCustom(
+    _In_ Application* app,
+    _In_ HWND hWnd,
+    _In_ uint32_t width,
+    _In_ uint32_t height,
+    _In_ uint32_t mines)
+{
+    if (!CreateCustomMinefield(&app->minefield, width, height, mines))
+    {
+        MessageBoxW(hWnd, L"Failed to create grid. Check your settings", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    InitNewGame(app, hWnd);
+}
+
+static INT_PTR CALLBACK
+CustomGameDlgProc(_In_ HWND hDlg, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    switch (msg)
+    {
+        case WM_INITDIALOG:
+        {
+            Application* app = (Application*)lParam;
+            SetWindowLongPtr(hDlg, GWLP_USERDATA, (LONG_PTR)app);
+
+            if (app != NULL)
+            {
+                SetDlgItemInt(hDlg, IDC_CUSTOM_WIDTH, app->minefield.width, FALSE);
+                SetDlgItemInt(hDlg, IDC_CUSTOM_HEIGHT, app->minefield.height, FALSE);
+                SetDlgItemInt(hDlg, IDC_CUSTOM_MINES, app->minefield.totalMines, FALSE);
+            }
+            else
+            {
+                SetDlgItemInt(hDlg, IDC_CUSTOM_WIDTH, 9, FALSE);
+                SetDlgItemInt(hDlg, IDC_CUSTOM_HEIGHT, 9, FALSE);
+                SetDlgItemInt(hDlg, IDC_CUSTOM_MINES, 10, FALSE);
+            }
+
+            return TRUE;
+        }
+        case WM_COMMAND:
+        {
+            Application* app = (Application*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+            HWND hParent = GetParent(hDlg);
+
+            switch (LOWORD(wParam))
+            {
+                case IDOK:
+                {
+                    BOOL ok1 = FALSE, ok2 = FALSE, ok3 = FALSE;
+                    UINT w = GetDlgItemInt(hDlg, IDC_CUSTOM_WIDTH, &ok1, FALSE);
+                    UINT h = GetDlgItemInt(hDlg, IDC_CUSTOM_HEIGHT, &ok2, FALSE);
+                    UINT m = GetDlgItemInt(hDlg, IDC_CUSTOM_MINES, &ok3, FALSE);
+
+                    if (!ok1 || !ok2 || !ok3)
+                    {
+                        MessageBoxW(hDlg, L"Please enter valid numbers.", L"Invalid Input", MB_OK | MB_ICONWARNING);
+                        return TRUE;
+                    }
+
+                    w = max(1u, min((UINT)MAX_CELLS_HORIZONTALLY, w));
+                    h = max(1u, min((UINT)MAX_CELLS_VERTICALLY, h));
+
+                    UINT maxMines = w * h - 1;
+                    if (m > maxMines)
+                        m = maxMines;
+                    if (m < 1)
+                        m = 1;
+
+                    if (app && hParent)
+                    {
+                        StartNewGameCustom(app, hParent, (uint32_t)w, (uint32_t)h, (uint32_t)m);
+                    }
+
+                    EndDialog(hDlg, IDOK);
+                    return TRUE;
+                }
+                case IDCANCEL:
+                    EndDialog(hDlg, IDCANCEL);
+                    return TRUE;
+            }
+
+            break;
+        }
+    }
+
+    return FALSE;
 }
 
 static void
@@ -397,17 +491,40 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
                     StartNewGame(app, hWnd, DIFFICULTY_EXPERT);
                     break;
                 case IDM_GAME_CUSTOM:
-                    MessageBoxW(hWnd, L"Custom difficulty not implemented yet", L"Info", MB_OK);
+                {
+                    DialogBoxParamW(
+                        GetWindowInstance(hWnd),
+                        MAKEINTRESOURCEW(IDD_CUSTOM_GAME),
+                        hWnd,
+                        CustomGameDlgProc,
+                        (LPARAM)app);
                     break;
-                case IDM_GAME_BEST_TIMES:
-                    MessageBoxW(hWnd, L"Leaderboard clicked!", L"Info", MB_OK);
-                    break;
+                }
                 case IDM_GAME_EXIT:
                     SendMessage(hWnd, WM_CLOSE, 0, 0);
                     break;
                 case IDM_HELP_ABOUT:
-                    MessageBoxW(hWnd, L"Minesweeper v1.0\nBuilt with Win32 API", L"About", MB_OK);
+                {
+                    wchar_t about[512];
+
+                    swprintf(
+                        about,
+                        ARRAYSIZE(about),
+                        L"Minesweeper\n"
+                        L"Version 1.0\n"
+                        L"Built %S %S\n\n"
+                        L"GitHub: https://github.com/GustasG/Minesweeper\n"
+                        L"License: MIT\n\n"
+                        L"Controls:\n"
+                        L"- Left-click: Reveal\n"
+                        L"- Right-click: Flag/Unflag\n"
+                        L"- F2: New Game\n\n",
+                        __DATE__,
+                        __TIME__);
+
+                    MessageBoxW(hWnd, about, L"About Minesweeper", MB_OK | MB_ICONINFORMATION);
                     break;
+                }
                 default:
                     return DefWindowProc(hWnd, uMsg, wParam, lParam);
             }

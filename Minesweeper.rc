@@ -48,10 +48,31 @@ LANGUAGE LANG_ENGLISH,
                             IDR_MENU1 MENU BEGIN POPUP "Game" BEGIN MENUITEM "New\tF2",
     IDM_GAME_NEW MENUITEM SEPARATOR MENUITEM "Beginner", IDM_GAME_BEGINNER MENUITEM "Intermediate",
     IDM_GAME_INTERMEDIATE MENUITEM "Expert", IDM_GAME_EXPERT MENUITEM "Custom...",
-    IDM_GAME_CUSTOM MENUITEM SEPARATOR MENUITEM "Marks (?)", IDM_GAME_MARKS, CHECKED MENUITEM "Color", IDM_GAME_COLORS,
-    CHECKED MENUITEM "Sound", IDM_GAME_SOUND MENUITEM SEPARATOR MENUITEM "Best Times...",
-    IDM_GAME_BEST_TIMES MENUITEM SEPARATOR MENUITEM "Exit", IDM_GAME_EXIT END POPUP "Help" BEGIN MENUITEM "About...",
+    IDM_GAME_CUSTOM MENUITEM SEPARATOR MENUITEM "Exit", IDM_GAME_EXIT END POPUP "Help" BEGIN MENUITEM "About...",
     IDM_HELP_ABOUT END END
+
+        /////////////////////////////////////////////////////////////////////////////
+        //
+        // Dialog
+        //
+
+        IDD_CUSTOM_GAME DIALOGEX 0, 0, 180, 100
+        STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+        CAPTION "Custom Game"
+        FONT 9, "Segoe UI"
+        BEGIN
+            LTEXT           "Width:", -1, 10, 12, 40, 10
+            EDITTEXT        IDC_CUSTOM_WIDTH, 60, 10, 40, 12, ES_NUMBER | WS_TABSTOP | WS_BORDER
+
+            LTEXT           "Height:", -1, 10, 32, 40, 10
+            EDITTEXT        IDC_CUSTOM_HEIGHT, 60, 30, 40, 12, ES_NUMBER | WS_TABSTOP | WS_BORDER
+
+            LTEXT           "Mines:", -1, 10, 52, 40, 10
+            EDITTEXT        IDC_CUSTOM_MINES, 60, 50, 40, 12, ES_NUMBER | WS_TABSTOP | WS_BORDER
+
+            DEFPUSHBUTTON   "OK", IDOK, 70, 75, 45, 14
+            PUSHBUTTON      "Cancel", IDCANCEL, 120, 75, 45, 14
+        END
 
         /////////////////////////////////////////////////////////////////////////////
         //
