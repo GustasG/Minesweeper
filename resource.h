@@ -37,6 +37,17 @@
 #define IDB_BORDER_COUNTER_RIGHT        135
 #define IDB_BORDER_MIDDLE_LEFT          136
 #define IDB_BORDER_MIDDLE_RIGHT         137
+#define IDB_COUNTER_MINUS               138
+#define IDB_COUNTER0                    139
+#define IDB_COUNTER1                    140
+#define IDB_COUNTER2                    141
+#define IDB_COUNTER3                    142
+#define IDB_COUNTER4                    143
+#define IDB_COUNTER5                    144
+#define IDB_COUNTER6                    145
+#define IDB_COUNTER7                    146
+#define IDB_COUNTER8                    147
+#define IDB_COUNTER9                    148
 #define IDM_GAME_NEW                    40015
 #define IDM_GAME_BEGINNER               40016
 #define IDM_GAME_INTERMEDIATE           40017
@@ -54,7 +65,7 @@
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        138
+#define _APS_NEXT_RESOURCE_VALUE        149
 #define _APS_NEXT_COMMAND_VALUE         40032
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101

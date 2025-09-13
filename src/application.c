@@ -76,6 +76,19 @@ UnloadBorderResources(_In_ BorderResources* resources)
 }
 
 static void
+UnloadCounterResources(_In_ CounterResources* resources)
+{
+    for (size_t i = 0; i < ARRAYSIZE(resources->digits); i++)
+    {
+        if (resources->digits[i] != NULL)
+            DeleteObject(resources->digits[i]);
+    }
+
+    if (resources->minus != NULL)
+        DeleteObject(resources->minus);
+}
+
+static void
 UnloadFaceResources(_In_ FaceResources* resources)
 {
     if (resources->click != NULL)
@@ -99,6 +112,7 @@ UnloadAssets(_In_ Application* app)
 {
     UnloadCellResources(&app->cellResources);
     UnloadBorderResources(&app->borderResources);
+    UnloadCounterResources(&app->counterResources);
     UnloadFaceResources(&app->faceResources);
 }
 
@@ -189,6 +203,34 @@ LoadBorderResources(_In_ BorderResources* resources, _In_ HINSTANCE hInstance)
 }
 
 static bool
+LoadCounterResources(_In_ CounterResources* resources, _In_ HINSTANCE hInstance)
+{
+    static const int bitmapNames[] = {
+        IDB_COUNTER0,
+        IDB_COUNTER1,
+        IDB_COUNTER2,
+        IDB_COUNTER3,
+        IDB_COUNTER4,
+        IDB_COUNTER5,
+        IDB_COUNTER6,
+        IDB_COUNTER7,
+        IDB_COUNTER8,
+        IDB_COUNTER9,
+    };
+
+    for (size_t i = 0; i < ARRAYSIZE(bitmapNames); i++)
+    {
+        if ((resources->digits[i] = LoadBitmapW(hInstance, MAKEINTRESOURCE(bitmapNames[i]))) == NULL)
+            return false;
+    }
+
+    if ((resources->minus = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_COUNTER_MINUS))) == NULL)
+        return false;
+
+    return true;
+}
+
+static bool
 LoadFaceResources(_In_ FaceResources* resources, _In_ HINSTANCE hInstance)
 {
     if ((resources->click = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_CLICK_FACE))) == NULL)
@@ -216,6 +258,9 @@ LoadAssets(_In_ Application* app, _In_ HINSTANCE hInstance)
         goto fail;
 
     if (!LoadBorderResources(&app->borderResources, hInstance))
+        goto fail;
+
+    if (!LoadCounterResources(&app->counterResources, hInstance))
         goto fail;
 
     if (!LoadFaceResources(&app->faceResources, hInstance))

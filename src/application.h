@@ -34,6 +34,12 @@ typedef struct
 
 typedef struct
 {
+    HBITMAP digits[10];
+    HBITMAP minus;
+} CounterResources;
+
+typedef struct
+{
     HBITMAP click;
     HBITMAP lost;
     HBITMAP smile;
@@ -59,6 +65,7 @@ typedef struct
     Minefield minefield;
     CellResources cellResources;
     BorderResources borderResources;
+    CounterResources counterResources;
     FaceResources faceResources;
     LayoutMetrics metrics;
     uint32_t hoverCellX;

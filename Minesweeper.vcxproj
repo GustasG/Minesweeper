@@ -168,6 +168,17 @@
     <Image Include="assets\cells\cellmine.bmp" />
     <Image Include="assets\cells\cellup.bmp" />
     <Image Include="assets\cells\falsemine.bmp" />
+    <Image Include="assets\counter\counter-.bmp" />
+    <Image Include="assets\counter\counter0.bmp" />
+    <Image Include="assets\counter\counter1.bmp" />
+    <Image Include="assets\counter\counter2.bmp" />
+    <Image Include="assets\counter\counter3.bmp" />
+    <Image Include="assets\counter\counter4.bmp" />
+    <Image Include="assets\counter\counter5.bmp" />
+    <Image Include="assets\counter\counter6.bmp" />
+    <Image Include="assets\counter\counter7.bmp" />
+    <Image Include="assets\counter\counter8.bmp" />
+    <Image Include="assets\counter\counter9.bmp" />
     <Image Include="assets\faces\clickface.bmp" />
     <Image Include="assets\faces\lostface.bmp" />
     <Image Include="assets\faces\smileface.bmp" />

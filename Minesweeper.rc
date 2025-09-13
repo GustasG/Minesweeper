@@ -130,6 +130,28 @@ LANGUAGE LANG_ENGLISH,
 
     IDB_BORDER_COUNTER_RIGHT BITMAP "assets/border/counterright.bmp"
 
+    IDB_COUNTER_MINUS BITMAP "assets/counter/counter-.bmp"
+
+    IDB_COUNTER0 BITMAP "assets/counter/counter0.bmp"
+
+    IDB_COUNTER1 BITMAP "assets/counter/counter1.bmp"
+
+    IDB_COUNTER2 BITMAP "assets/counter/counter2.bmp"
+
+    IDB_COUNTER3 BITMAP "assets/counter/counter3.bmp"
+
+    IDB_COUNTER4 BITMAP "assets/counter/counter4.bmp"
+
+    IDB_COUNTER5 BITMAP "assets/counter/counter5.bmp"
+
+    IDB_COUNTER6 BITMAP "assets/counter/counter6.bmp"
+
+    IDB_COUNTER7 BITMAP "assets/counter/counter7.bmp"
+
+    IDB_COUNTER8 BITMAP "assets/counter/counter8.bmp"
+
+    IDB_COUNTER9 BITMAP "assets/counter/counter9.bmp"
+
     // Icon
     //
 
