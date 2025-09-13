@@ -17,29 +17,29 @@ typedef struct
 
 typedef struct
 {
+    HBITMAP bottom;
+    HBITMAP bottomLeft;
+    HBITMAP bottomRight;
+    HBITMAP counterLeft;
+    HBITMAP counterMiddle;
+    HBITMAP counterRight;
+    HBITMAP left;
+    HBITMAP middleLeft;
+    HBITMAP middleRight;
+    HBITMAP right;
+    HBITMAP top;
+    HBITMAP topLeft;
+    HBITMAP topRight;
+} BorderResources;
+
+typedef struct
+{
     HBITMAP click;
     HBITMAP lost;
     HBITMAP smile;
     HBITMAP smileFaceDown;
     HBITMAP win;
 } FaceResources;
-
-typedef struct
-{
-    HBITMAP bottom;
-    HBITMAP bottomLeft;
-    HBITMAP bottomRight;
-    HBITMAP left;
-    HBITMAP middleLeft;
-    HBITMAP middleRight;
-    HBITMAP counterLeft;
-    HBITMAP counterMiddle;
-    HBITMAP counterRight;
-    HBITMAP right;
-    HBITMAP top;
-    HBITMAP topLeft;
-    HBITMAP topRight;
-} BorderResources;
 
 typedef struct
 {
@@ -58,8 +58,8 @@ typedef struct
 {
     Minefield minefield;
     CellResources cellResources;
-    FaceResources faceResources;
     BorderResources borderResources;
+    FaceResources faceResources;
     LayoutMetrics metrics;
     uint32_t hoverCellX;
     uint32_t hoverCellY;

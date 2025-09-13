@@ -121,9 +121,25 @@ GetFaceBitmap(_In_ const Application* app)
             break;
         }
         case GAME_WON:
+        {
+            if (app->isLeftMouseDown)
+            {
+                if (app->isFaceHot)
+                    return app->faceResources.smileFaceDown;
+            }
+
             return app->faceResources.win;
+        }
         case GAME_LOST:
+        {
+            if (app->isLeftMouseDown)
+            {
+                if (app->isFaceHot)
+                    return app->faceResources.smileFaceDown;
+            }
+
             return app->faceResources.lost;
+        }
     }
 
     return app->faceResources.smile;

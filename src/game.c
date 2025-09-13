@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "game.h"
+#include "random.h"
 
 static void
 GetDifficultySettings(_In_ Difficulty difficulty, _Out_ uint32_t* width, _Out_ uint32_t* height, _Out_ uint32_t* mines)
@@ -76,7 +77,9 @@ PlaceMines(_Inout_ Minefield* field, _In_ uint32_t excludeX, _In_ uint32_t exclu
     if (excludeX >= field->width || excludeY >= field->height)
         return;
 
-    srand((unsigned int)time(NULL));
+    struct xorshift32_state state = {
+        .a = (uint32_t)GetTickCount64(),
+    };
 
     uint32_t minesPlaced = 0;
     uint32_t attempts = 0;
@@ -84,8 +87,8 @@ PlaceMines(_Inout_ Minefield* field, _In_ uint32_t excludeX, _In_ uint32_t exclu
 
     while (minesPlaced < field->totalMines && attempts < maxAttempts)
     {
-        uint32_t x = (uint32_t)(rand() % (int32_t)field->width);
-        uint32_t y = (uint32_t)(rand() % (int32_t)field->height);
+        uint32_t x = xorshift32(&state) % field->width;
+        uint32_t y = xorshift32(&state) % field->height;
 
         attempts++;
 
@@ -187,7 +190,7 @@ RevealCell(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y)
     if (field->firstClick)
     {
         field->firstClick = false;
-        field->startTime = time(NULL);
+        field->startTime = GetTickCount64();
 
         PlaceMines(field, x, y);
         CalculateNeighborMines(field);

@@ -33,6 +33,49 @@ UnloadCellResources(_In_ CellResources* resources)
 }
 
 static void
+UnloadBorderResources(_In_ BorderResources* resources)
+{
+    if (resources->bottom != NULL)
+        DeleteObject(resources->bottom);
+
+    if (resources->bottomLeft != NULL)
+        DeleteObject(resources->bottomLeft);
+
+    if (resources->bottomRight != NULL)
+        DeleteObject(resources->bottomRight);
+
+    if (resources->counterLeft != NULL)
+        DeleteObject(resources->counterLeft);
+
+    if (resources->counterMiddle != NULL)
+        DeleteObject(resources->counterMiddle);
+
+    if (resources->counterRight != NULL)
+        DeleteObject(resources->counterRight);
+
+    if (resources->left != NULL)
+        DeleteObject(resources->left);
+
+    if (resources->middleLeft != NULL)
+        DeleteObject(resources->middleLeft);
+
+    if (resources->middleRight != NULL)
+        DeleteObject(resources->middleRight);
+
+    if (resources->right != NULL)
+        DeleteObject(resources->right);
+
+    if (resources->top != NULL)
+        DeleteObject(resources->top);
+
+    if (resources->topLeft != NULL)
+        DeleteObject(resources->topLeft);
+
+    if (resources->topRight != NULL)
+        DeleteObject(resources->topRight);
+}
+
+static void
 UnloadFaceResources(_In_ FaceResources* resources)
 {
     if (resources->click != NULL)
@@ -52,54 +95,11 @@ UnloadFaceResources(_In_ FaceResources* resources)
 }
 
 static void
-UnloadBorderResources(_In_ BorderResources* resources)
-{
-    if (resources->bottom != NULL)
-        DeleteObject(resources->bottom);
-
-    if (resources->bottomLeft != NULL)
-        DeleteObject(resources->bottomLeft);
-
-    if (resources->bottomRight != NULL)
-        DeleteObject(resources->bottomRight);
-
-    if (resources->left != NULL)
-        DeleteObject(resources->left);
-
-    if (resources->middleLeft != NULL)
-        DeleteObject(resources->middleLeft);
-
-    if (resources->middleRight != NULL)
-        DeleteObject(resources->middleRight);
-
-    if (resources->counterLeft != NULL)
-        DeleteObject(resources->counterLeft);
-
-    if (resources->counterMiddle != NULL)
-        DeleteObject(resources->counterMiddle);
-
-    if (resources->counterRight != NULL)
-        DeleteObject(resources->counterRight);
-
-    if (resources->right != NULL)
-        DeleteObject(resources->right);
-
-    if (resources->top != NULL)
-        DeleteObject(resources->top);
-
-    if (resources->topLeft != NULL)
-        DeleteObject(resources->topLeft);
-
-    if (resources->topRight != NULL)
-        DeleteObject(resources->topRight);
-}
-
-static void
 UnloadAssets(_In_ Application* app)
 {
     UnloadCellResources(&app->cellResources);
-    UnloadFaceResources(&app->faceResources);
     UnloadBorderResources(&app->borderResources);
+    UnloadFaceResources(&app->faceResources);
 }
 
 static bool
@@ -144,6 +144,51 @@ LoadCellResources(_In_ CellResources* resources, _In_ HINSTANCE hInstance)
 }
 
 static bool
+LoadBorderResources(_In_ BorderResources* resources, _In_ HINSTANCE hInstance)
+{
+    if ((resources->bottom = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM))) == NULL)
+        return false;
+
+    if ((resources->bottomLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_LEFT))) == NULL)
+        return false;
+
+    if ((resources->bottomRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->counterLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_LEFT))) == NULL)
+        return false;
+
+    if ((resources->counterMiddle = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_MIDDLE))) == NULL)
+        return false;
+
+    if ((resources->counterRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->left = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_LEFT))) == NULL)
+        return false;
+
+    if ((resources->middleLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_LEFT))) == NULL)
+        return false;
+
+    if ((resources->middleRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->right = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_RIGHT))) == NULL)
+        return false;
+
+    if ((resources->top = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP))) == NULL)
+        return false;
+
+    if ((resources->topLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_LEFT))) == NULL)
+        return false;
+
+    if ((resources->topRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_RIGHT))) == NULL)
+        return false;
+
+    return true;
+}
+
+static bool
 LoadFaceResources(_In_ FaceResources* resources, _In_ HINSTANCE hInstance)
 {
     if ((resources->click = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_CLICK_FACE))) == NULL)
@@ -165,60 +210,15 @@ LoadFaceResources(_In_ FaceResources* resources, _In_ HINSTANCE hInstance)
 }
 
 static bool
-LoadBorderResources(_In_ BorderResources* resources, _In_ HINSTANCE hInstance)
-{
-    if ((resources->bottom = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM))) == NULL)
-        return false;
-
-    if ((resources->bottomLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_LEFT))) == NULL)
-        return false;
-
-    if ((resources->bottomRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_BOTTOM_RIGHT))) == NULL)
-        return false;
-
-    if ((resources->left = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_LEFT))) == NULL)
-        return false;
-
-    if ((resources->middleLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_LEFT))) == NULL)
-        return false;
-
-    if ((resources->middleRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_MIDDLE_RIGHT))) == NULL)
-        return false;
-
-    if ((resources->counterLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_LEFT))) == NULL)
-        return false;
-
-    if ((resources->counterMiddle = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_MIDDLE))) == NULL)
-        return false;
-
-    if ((resources->counterRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_COUNTER_RIGHT))) == NULL)
-        return false;
-
-    if ((resources->right = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_RIGHT))) == NULL)
-        return false;
-
-    if ((resources->top = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP))) == NULL)
-        return false;
-
-    if ((resources->topLeft = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_LEFT))) == NULL)
-        return false;
-
-    if ((resources->topRight = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_BORDER_TOP_RIGHT))) == NULL)
-        return false;
-
-    return true;
-}
-
-static bool
 LoadAssets(_In_ Application* app, _In_ HINSTANCE hInstance)
 {
     if (!LoadCellResources(&app->cellResources, hInstance))
         goto fail;
 
-    if (!LoadFaceResources(&app->faceResources, hInstance))
+    if (!LoadBorderResources(&app->borderResources, hInstance))
         goto fail;
 
-    if (!LoadBorderResources(&app->borderResources, hInstance))
+    if (!LoadFaceResources(&app->faceResources, hInstance))
         goto fail;
 
     return true;

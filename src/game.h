@@ -40,7 +40,7 @@ typedef enum
 typedef struct
 {
     Cell cells[MAX_CELLS_VERTICALLY * MAX_CELLS_HORIZONTALLY];
-    time_t startTime;
+    uint64_t startTime;
     uint32_t width;
     uint32_t height;
     uint32_t totalMines;
@@ -48,9 +48,9 @@ typedef struct
     uint32_t revealedCells;
     GameState state;
     Difficulty difficulty;
-    bool firstClick;
     uint32_t blastX;
     uint32_t blastY;
+    bool firstClick;
 } Minefield;
 
 bool CreateMinefield(_Out_ Minefield* field, _In_ Difficulty difficulty);
