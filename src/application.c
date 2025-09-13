@@ -35,6 +35,9 @@ UnloadCellResources(_In_ CellResources* resources)
 static void
 UnloadFaceResources(_In_ FaceResources* resources)
 {
+    if (resources->click != NULL)
+        DeleteObject(resources->click);
+
     if (resources->lost != NULL)
         DeleteObject(resources->lost);
 
@@ -143,6 +146,9 @@ LoadCellResources(_In_ CellResources* resources, _In_ HINSTANCE hInstance)
 static bool
 LoadFaceResources(_In_ FaceResources* resources, _In_ HINSTANCE hInstance)
 {
+    if ((resources->click = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_CLICK_FACE))) == NULL)
+        return false;
+
     if ((resources->lost = LoadBitmapW(hInstance, MAKEINTRESOURCE(IDB_LOST_FACE))) == NULL)
         return false;
 
@@ -241,11 +247,16 @@ CreateApplication(_In_ HINSTANCE hInstance)
     app->metrics.cellSize = (uint32_t)CELL_SIZE;
     app->metrics.borderWidth = (uint32_t)BORDER_WIDTH;
     app->metrics.borderHeight = (uint32_t)BORDER_HEIGHT;
-    app->metrics.timerBorderWidth = (uint32_t)TIMER_BORDER_WIDTH;
-    app->metrics.timerAreaHeight = (uint32_t)TIMER_AREA_HEIGHT;
+    app->metrics.counterBorderWidth = (uint32_t)COUNTER_BORDER_WIDTH;
+    app->metrics.counterAreaHeight = (uint32_t)COUNTER_AREA_HEIGHT;
+    app->metrics.counterMargin = (uint32_t)COUNTER_MARGIN;
+    app->metrics.counterHeight = (uint32_t)COUNTER_HEIGHT;
+    app->metrics.counterDigitWidth = (uint32_t)COUNTER_DIGIT_WIDTH;
+    app->metrics.faceSize = (uint32_t)FACE_SIZE;
 
     app->hoverCellX = (uint32_t)-1;
     app->hoverCellY = (uint32_t)-1;
+    app->isFaceHot = false;
 
     return app;
 }

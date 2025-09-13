@@ -103,6 +103,32 @@ GetCellBackground(_In_ const Application* app, _In_ const Cell* cell, _In_ uint3
     return NULL;
 }
 
+static _Ret_notnull_ HBITMAP
+GetFaceBitmap(_In_ const Application* app)
+{
+    switch (app->minefield.state)
+    {
+        case GAME_PLAYING:
+        {
+            if (app->isLeftMouseDown)
+            {
+                if (app->isFaceHot)
+                    return app->faceResources.smileFaceDown;
+
+                return app->faceResources.click;
+            }
+
+            break;
+        }
+        case GAME_WON:
+            return app->faceResources.win;
+        case GAME_LOST:
+            return app->faceResources.lost;
+    }
+
+    return app->faceResources.smile;
+}
+
 static _Ret_maybenull_ HBITMAP
 GetCellNumber(_In_ const Application* app, _In_ const Cell* cell)
 {
@@ -141,11 +167,12 @@ RenderGridCell(
 static void
 RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t cellSize = app->metrics.cellSize;
+    uint32_t boardWidth = app->minefield.width * cellSize;
     uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
     uint32_t gridRightEdge = app->metrics.borderWidth + boardWidth;
-    uint32_t gridTopY = app->metrics.borderHeight + app->metrics.timerAreaHeight + app->metrics.borderHeight;
-    uint32_t bottomEdge = gridTopY + boardHeight;
+    uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.counterAreaHeight;
+    uint32_t bottomEdge = originY + boardHeight;
 
     BlitBitmapScaled(
         hdc,
@@ -181,7 +208,7 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         0,
         app->metrics.borderHeight,
         app->metrics.borderWidth,
-        app->metrics.timerAreaHeight);
+        app->metrics.counterAreaHeight);
 
     BlitBitmapScaled(
         hdc,
@@ -190,14 +217,14 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         gridRightEdge,
         app->metrics.borderHeight,
         app->metrics.borderWidth,
-        app->metrics.timerAreaHeight);
+        app->metrics.counterAreaHeight);
 
     BlitBitmapScaled(
         hdc,
         hdcMem,
         app->borderResources.middleLeft,
         0,
-        gridTopY - app->metrics.borderHeight,
+        originY - app->metrics.borderHeight,
         app->metrics.borderWidth,
         app->metrics.borderHeight);
 
@@ -206,7 +233,7 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         hdcMem,
         app->borderResources.top,
         app->metrics.borderWidth,
-        gridTopY - app->metrics.borderHeight,
+        originY - app->metrics.borderHeight,
         boardWidth,
         app->metrics.borderHeight);
 
@@ -215,18 +242,18 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
         hdcMem,
         app->borderResources.middleRight,
         gridRightEdge,
-        gridTopY - app->metrics.borderHeight,
+        originY - app->metrics.borderHeight,
         app->metrics.borderWidth,
         app->metrics.borderHeight);
 
-    BlitBitmapScaled(hdc, hdcMem, app->borderResources.left, 0, gridTopY, app->metrics.borderWidth, boardHeight);
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.left, 0, originY, app->metrics.borderWidth, boardHeight);
 
     BlitBitmapScaled(
         hdc,
         hdcMem,
         app->borderResources.right,
         gridRightEdge,
-        gridTopY,
+        originY,
         app->metrics.borderWidth,
         boardHeight);
 
@@ -259,11 +286,32 @@ RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 }
 
 static void
+RenderFace(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
+{
+    uint32_t contentLeft = app->metrics.borderWidth;
+    uint32_t contentTop = app->metrics.borderHeight;
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+
+    uint32_t faceSize = app->metrics.faceSize;
+    uint32_t faceLeft = contentLeft + (boardWidth - faceSize) / 2;
+    uint32_t faceTop = contentTop + (app->metrics.counterAreaHeight - faceSize) / 2;
+
+    HBITMAP face = GetFaceBitmap(app);
+    BlitBitmapScaled(hdc, hdcMem, face, faceLeft, faceTop, faceSize, faceSize);
+}
+
+static void
+RenderCounterArea(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
+{
+    RenderFace(app, hdc, hdcMem);
+}
+
+static void
 RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
     uint32_t cellSize = app->metrics.cellSize;
     uint32_t originX = app->metrics.borderWidth;
-    uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.timerAreaHeight;
+    uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.counterAreaHeight;
 
     for (uint32_t y = 0; y < app->minefield.height; y++)
     {
@@ -291,6 +339,7 @@ RenderGameWindow(_In_ const Application* app, _In_ HDC hdc)
     int oldMode = SetStretchBltMode(hdc, HALFTONE);
 
     RenderBorders(app, hdc, hdcMem);
+    RenderCounterArea(app, hdc, hdcMem);
     RenderGrid(app, hdc, hdcMem);
 
     SetStretchBltMode(hdc, oldMode);

@@ -21,6 +21,7 @@
 #define IDB_FALSEMINE                   118
 #define IDB_LOST_FACE                   119
 #define IDB_SMILE_FACE                  120
+#define IDB_CLICK_FACE                  121
 #define IDB_SMILE_FACE_DOWN             122
 #define IDB_WIN_FACE                    123
 #define IDB_BORDER_BOTTOM               125
@@ -50,7 +51,7 @@
 #define IDM_GAME_SOUND                  40031
 
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        138

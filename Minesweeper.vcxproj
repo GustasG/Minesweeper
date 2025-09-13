@@ -164,6 +164,7 @@
     <Image Include="assets\cells\cellmine.bmp" />
     <Image Include="assets\cells\cellup.bmp" />
     <Image Include="assets\cells\falsemine.bmp" />
+    <Image Include="assets\faces\clickface.bmp" />
     <Image Include="assets\faces\lostface.bmp" />
     <Image Include="assets\faces\smileface.bmp" />
     <Image Include="assets\faces\smilefacedown.bmp" />

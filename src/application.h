@@ -17,6 +17,7 @@ typedef struct
 
 typedef struct
 {
+    HBITMAP click;
     HBITMAP lost;
     HBITMAP smile;
     HBITMAP smileFaceDown;
@@ -45,8 +46,12 @@ typedef struct
     uint32_t cellSize;
     uint32_t borderWidth;
     uint32_t borderHeight;
-    uint32_t timerBorderWidth;
-    uint32_t timerAreaHeight;
+    uint32_t counterBorderWidth;
+    uint32_t counterAreaHeight;
+    uint32_t counterMargin;
+    uint32_t counterHeight;
+    uint32_t counterDigitWidth;
+    uint32_t faceSize;
 } LayoutMetrics;
 
 typedef struct
@@ -59,6 +64,7 @@ typedef struct
     uint32_t hoverCellX;
     uint32_t hoverCellY;
     bool isLeftMouseDown;
+    bool isFaceHot;
 } Application;
 
 _Ret_maybenull_ Application* CreateApplication(_In_ HINSTANCE hInstance);

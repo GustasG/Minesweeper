@@ -14,7 +14,7 @@ _Success_(return) static bool TryGetCellFromPoint(
     _Out_ uint32_t* outY)
 {
     int32_t originX = (int32_t)app->metrics.borderWidth;
-    int32_t originY = (int32_t)(app->metrics.borderHeight + app->metrics.timerAreaHeight + app->metrics.borderHeight);
+    int32_t originY = (int32_t)(app->metrics.borderHeight + app->metrics.counterAreaHeight + app->metrics.borderHeight);
 
     if (x < originX || y < originY)
         return false;
@@ -22,10 +22,6 @@ _Success_(return) static bool TryGetCellFromPoint(
     int32_t relX = x - originX;
     int32_t relY = y - originY;
     int32_t cellSize = (int32_t)app->metrics.cellSize;
-
-    if (cellSize <= 0)
-        return false;
-
     uint32_t cellX = (uint32_t)(relX / cellSize);
     uint32_t cellY = (uint32_t)(relY / cellSize);
 
@@ -36,6 +32,46 @@ _Success_(return) static bool TryGetCellFromPoint(
     *outY = cellY;
 
     return true;
+}
+
+static void
+GetFaceRect(_In_ const Application* app, _Out_ LPRECT lpRect)
+{
+    uint32_t contentLeft = app->metrics.borderWidth;
+    uint32_t contentTop = app->metrics.borderHeight;
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t faceSize = app->metrics.faceSize;
+
+    uint32_t faceLeft = contentLeft + (boardWidth - faceSize) / 2;
+    uint32_t faceTop = contentTop + (app->metrics.counterAreaHeight - faceSize) / 2;
+
+    lpRect->left = faceLeft;
+    lpRect->top = faceTop;
+    lpRect->right = faceLeft + faceSize;
+    lpRect->bottom = faceTop + faceSize;
+}
+
+static bool
+IsPointInFace(_In_ const Application* app, _In_ int32_t x, _In_ int32_t y)
+{
+    RECT fr;
+    POINT pt = {x, y};
+
+    GetFaceRect(app, &fr);
+
+    return PtInRect(&fr, pt);
+}
+
+static void
+UpdateFaceHot(_Inout_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    bool prev = app->isFaceHot;
+    app->isFaceHot = IsPointInFace(app, x, y);
+
+    if (app->isFaceHot != prev)
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
 }
 
 static bool
@@ -80,8 +116,12 @@ UpdateLayoutMetricsForWindow(_Inout_ Application* app, _In_ HWND hWnd)
     app->metrics.cellSize = (uint32_t)MulDiv(CELL_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
     app->metrics.borderWidth = (uint32_t)MulDiv(BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
     app->metrics.borderHeight = (uint32_t)MulDiv(BORDER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.timerBorderWidth = (uint32_t)MulDiv(TIMER_BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.timerAreaHeight = (uint32_t)MulDiv(TIMER_AREA_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.counterBorderWidth = (uint32_t)MulDiv(COUNTER_BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.counterAreaHeight = (uint32_t)MulDiv(COUNTER_AREA_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.counterMargin = (uint32_t)MulDiv(COUNTER_MARGIN, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.counterHeight = (uint32_t)MulDiv(COUNTER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.counterDigitWidth = (uint32_t)MulDiv(COUNTER_DIGIT_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+    app->metrics.faceSize = (uint32_t)MulDiv(FACE_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
 }
 
 _Success_(
@@ -96,7 +136,7 @@ _Success_(
     uint32_t minClientWidth = boardWidth + 2u * app->metrics.borderWidth;
 
     // top border + counter area + middle part (border) + grid + bottom border
-    uint32_t minClientHeight = boardHeight + (3u * app->metrics.borderHeight) + app->metrics.timerAreaHeight;
+    uint32_t minClientHeight = boardHeight + (3u * app->metrics.borderHeight) + app->metrics.counterAreaHeight;
 
     lpRect->left = 0;
     lpRect->top = 0;
@@ -122,117 +162,6 @@ ResizeWindowForMinefield(_In_ const Application* app, _In_ HWND hWnd)
         windowRect.right - windowRect.left,
         windowRect.bottom - windowRect.top,
         SWP_NOMOVE | SWP_NOZORDER);
-}
-
-static void
-ShowGameOverMessage(_In_ HWND hWnd, _In_ GameState state)
-{
-    switch (state)
-    {
-        case GAME_WON:
-            MessageBoxW(hWnd, L"Congratulations! You won!", L"Victory", MB_OK | MB_ICONINFORMATION);
-            break;
-        case GAME_LOST:
-            MessageBoxW(hWnd, L"Game Over! You hit a mine!", L"Game Over", MB_OK | MB_ICONEXCLAMATION);
-            break;
-        default:
-            break;
-    }
-}
-
-static void
-HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
-{
-    if (!app->isLeftMouseDown)
-        return;
-
-    uint32_t prevX = app->hoverCellX;
-    uint32_t prevY = app->hoverCellY;
-    uint32_t cellX, cellY;
-
-    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
-    {
-        app->hoverCellX = cellX;
-        app->hoverCellY = cellY;
-    }
-    else
-    {
-        app->hoverCellX = (uint32_t)-1;
-        app->hoverCellY = (uint32_t)-1;
-    }
-
-    if (app->hoverCellX != prevX || app->hoverCellY != prevY)
-    {
-        InvalidateRect(hWnd, NULL, FALSE);
-    }
-}
-
-static void
-HandleLeftMouseDown(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
-{
-    uint32_t cellX, cellY;
-    app->isLeftMouseDown = true;
-
-    SetCapture(hWnd);
-
-    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
-    {
-        app->hoverCellX = cellX;
-        app->hoverCellY = cellY;
-    }
-    else
-    {
-        app->hoverCellX = (uint32_t)-1;
-        app->hoverCellY = (uint32_t)-1;
-    }
-
-    InvalidateRect(hWnd, NULL, FALSE);
-}
-
-static void
-HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
-{
-    bool revealed = false;
-
-    if (app->isLeftMouseDown)
-    {
-        uint32_t cellX, cellY;
-        app->isLeftMouseDown = false;
-
-        ReleaseCapture();
-
-        if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
-        {
-            if (RevealCell(&app->minefield, cellX, cellY))
-            {
-                revealed = true;
-            }
-        }
-    }
-
-    app->hoverCellX = (uint32_t)-1;
-    app->hoverCellY = (uint32_t)-1;
-
-    InvalidateRect(hWnd, NULL, FALSE);
-
-    if (revealed)
-    {
-        if (app->minefield.state == GAME_WON || app->minefield.state == GAME_LOST)
-        {
-            ShowGameOverMessage(hWnd, app->minefield.state);
-        }
-    }
-}
-
-static void
-HandleRightMouseClick(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
-{
-    uint32_t cellX, cellY;
-
-    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY) && ToggleFlag(&app->minefield, cellX, cellY))
-    {
-        InvalidateRect(hWnd, NULL, false);
-    }
 }
 
 static void
@@ -273,7 +202,98 @@ StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
     app->hoverCellX = (uint32_t)-1;
     app->hoverCellY = (uint32_t)-1;
 
-    InvalidateRect(hWnd, NULL, true);
+    InvalidateRect(hWnd, NULL, TRUE);
+}
+
+static void
+HandleMouseMove(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    if (!app->isLeftMouseDown)
+        return;
+
+    uint32_t prevX = app->hoverCellX;
+    uint32_t prevY = app->hoverCellY;
+    uint32_t cellX, cellY;
+
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
+    {
+        app->hoverCellX = cellX;
+        app->hoverCellY = cellY;
+    }
+    else
+    {
+        app->hoverCellX = (uint32_t)-1;
+        app->hoverCellY = (uint32_t)-1;
+    }
+
+    UpdateFaceHot(app, hWnd, x, y);
+
+    if (app->hoverCellX != prevX || app->hoverCellY != prevY)
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
+}
+
+static void
+HandleLeftMouseDown(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    uint32_t cellX, cellY;
+    app->isLeftMouseDown = true;
+
+    SetCapture(hWnd);
+    UpdateFaceHot(app, hWnd, x, y);
+
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
+    {
+        app->hoverCellX = cellX;
+        app->hoverCellY = cellY;
+    }
+    else
+    {
+        app->hoverCellX = (uint32_t)-1;
+        app->hoverCellY = (uint32_t)-1;
+    }
+
+    InvalidateRect(hWnd, NULL, FALSE);
+}
+
+static void
+HandleLeftMouseUp(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    if (app->isLeftMouseDown)
+    {
+        uint32_t cellX, cellY;
+        app->isLeftMouseDown = false;
+
+        ReleaseCapture();
+
+        if (IsPointInFace(app, x, y))
+        {
+            app->isFaceHot = false;
+            StartNewGame(app, hWnd, app->minefield.difficulty);
+        }
+        else if (TryGetCellFromPoint(app, x, y, &cellX, &cellY))
+        {
+            RevealCell(&app->minefield, cellX, cellY);
+        }
+    }
+
+    app->hoverCellX = (uint32_t)-1;
+    app->hoverCellY = (uint32_t)-1;
+    app->isFaceHot = false;
+
+    InvalidateRect(hWnd, NULL, FALSE);
+}
+
+static void
+HandleRightMouseClick(_In_ Application* app, _In_ HWND hWnd, _In_ int32_t x, _In_ int32_t y)
+{
+    uint32_t cellX, cellY;
+
+    if (TryGetCellFromPoint(app, x, y, &cellX, &cellY) && ToggleFlag(&app->minefield, cellX, cellY))
+    {
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
 }
 
 static LRESULT CALLBACK
@@ -438,6 +458,8 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
                 UpdateLayoutMetricsForWindow(app, hWnd);
                 ResizeWindowForMinefield(app, hWnd);
             }
+
+            InvalidateRect(hWnd, NULL, FALSE);
 
             return 0;
         }
