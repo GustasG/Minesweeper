@@ -41,6 +41,7 @@ typedef struct
 {
     Cell cells[MAX_CELLS_VERTICALLY * MAX_CELLS_HORIZONTALLY];
     uint64_t startTime;
+    uint64_t endTime;
     uint32_t width;
     uint32_t height;
     uint32_t totalMines;

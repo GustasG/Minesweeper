@@ -6,6 +6,8 @@
 #include "ui/render.h"
 #include "ui/window.h"
 
+#define TICK_TIMER_ID 1
+
 _Success_(return) static bool TryGetCellFromPoint(
     _In_ const Application* app,
     _In_ int32_t x,
@@ -98,13 +100,13 @@ IsDarkModeEnabled(void)
 static void
 ApplyDwmWindowAttributes(_In_ HWND hWnd)
 {
-    const BOOL useDark = IsDarkModeEnabled();
+    BOOL useDark = IsDarkModeEnabled();
     (void)DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(useDark));
 
-    const DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
+    DWM_WINDOW_CORNER_PREFERENCE corner = DWMWCP_ROUND;
     (void)DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
 
-    const int backdrop = DWMWA_NCRENDERING_POLICY;
+    DWORD backdrop = DWMSBT_MAINWINDOW;
     (void)DwmSetWindowAttribute(hWnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(backdrop));
 }
 
@@ -320,10 +322,13 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
                 StartNewGame(app, hWnd, DIFFICULTY_BEGINNER);
             }
 
+            SetTimer(hWnd, TICK_TIMER_ID, 1000, NULL);
+
             return 0;
         }
         case WM_DESTROY:
         {
+            KillTimer(hWnd, TICK_TIMER_ID);
             PostQuitMessage(0);
 
             return 0;
@@ -350,6 +355,28 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
             EndPaint(hWnd, &ps);
 
             return 0;
+        }
+        case WM_TIMER:
+        {
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            switch (wParam)
+            {
+                case TICK_TIMER_ID:
+                {
+                    if (app != NULL)
+                    {
+                        if (app->minefield.state == GAME_PLAYING && !app->minefield.firstClick)
+                        {
+                            InvalidateRect(hWnd, NULL, FALSE);
+                        }
+                    }
+
+                    return 0;
+                }
+            }
+
+            break;
         }
         case WM_COMMAND:
         {

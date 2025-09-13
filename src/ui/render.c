@@ -317,8 +317,118 @@ RenderFace(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 }
 
 static void
+RenderRemainingMines(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
+{
+    uint32_t contentLeft = app->metrics.borderWidth;
+    uint32_t contentTop = app->metrics.borderHeight;
+    uint32_t top = contentTop + (app->metrics.counterAreaHeight - app->metrics.counterHeight) / 2u;
+    uint32_t height = app->metrics.counterHeight;
+
+    // Left border
+    uint32_t leftLeft = contentLeft + app->metrics.counterMargin;
+    uint32_t leftWidth = app->metrics.counterBorderWidth;
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterLeft, leftLeft, top, leftWidth, height);
+
+    // Middle border (backdround)
+    uint32_t middleLeft = leftLeft + leftWidth;
+    uint32_t middleWidth = 3u * app->metrics.counterDigitWidth;
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterMiddle, middleLeft, top, middleWidth, height);
+
+    // Right border
+    uint32_t rightLeft = middleLeft + middleWidth;
+    uint32_t rightWidth = app->metrics.counterBorderWidth;
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterRight, rightLeft, top, rightWidth, height);
+
+    int32_t value = (int32_t)app->minefield.totalMines - (int32_t)app->minefield.flaggedCells;
+    value = max(-99, min(999, value));
+
+    HBITMAP s0 = NULL, s1 = NULL, s2 = NULL;
+
+    if (value < 0)
+    {
+        value = min(99, -value);
+
+        s0 = app->counterResources.minus;
+        s1 = app->counterResources.digits[(value / 10) % 10];
+        s2 = app->counterResources.digits[value % 10];
+    }
+    else
+    {
+        s0 = app->counterResources.digits[(value / 100) % 10];
+        s1 = app->counterResources.digits[(value / 10) % 10];
+        s2 = app->counterResources.digits[value % 10];
+    }
+
+    uint32_t counterWidth = app->metrics.counterDigitWidth;
+    BlitBitmapScaled(hdc, hdcMem, s0, middleLeft + 0u * counterWidth, top + 3, counterWidth, height - 3);
+    BlitBitmapScaled(hdc, hdcMem, s1, middleLeft + 1u * counterWidth, top + 3, counterWidth, height - 3);
+    BlitBitmapScaled(hdc, hdcMem, s2, middleLeft + 2u * counterWidth, top + 3, counterWidth, height - 3);
+}
+
+static void
+RenderTimer(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
+{
+    uint32_t contentLeft = app->metrics.borderWidth;
+    uint32_t contentTop = app->metrics.borderHeight;
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+
+    uint32_t top = contentTop + (app->metrics.counterAreaHeight - app->metrics.counterHeight) / 2u;
+    uint32_t height = app->metrics.counterHeight;
+
+    uint32_t rightWidth = app->metrics.counterBorderWidth;
+    uint32_t middleWidth = 3u * app->metrics.counterDigitWidth;
+    uint32_t leftWidth = app->metrics.counterBorderWidth;
+
+    int32_t rightLeft = contentLeft + boardWidth - app->metrics.counterMargin - rightWidth;
+    uint32_t middleLeft = rightLeft - middleWidth;
+    uint32_t leftLeft = middleLeft - leftWidth;
+
+    // Left border
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterLeft, leftLeft, top, leftWidth, height);
+
+    // Middle background
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterMiddle, middleLeft, top, middleWidth, height);
+
+    // Right border
+    BlitBitmapScaled(hdc, hdcMem, app->borderResources.counterRight, rightLeft, top, rightWidth, height);
+
+    int32_t seconds = 0;
+
+    if (!app->minefield.firstClick)
+    {
+        uint64_t diff = 0;
+
+        if (app->minefield.state == GAME_PLAYING)
+        {
+            diff = GetTickCount64() - app->minefield.startTime;
+        }
+        else
+        {
+            diff = app->minefield.endTime - app->minefield.startTime;
+        }
+
+        seconds = (int32_t)(diff / 1000ULL);
+    }
+
+    seconds = max(0, min(999, seconds));
+
+    uint32_t counterWidth = app->metrics.counterDigitWidth;
+
+    HBITMAP s0 = app->counterResources.digits[(seconds / 100) % 10];
+    BlitBitmapScaled(hdc, hdcMem, s0, middleLeft + 0u * counterWidth, top + 3, counterWidth, height - 3);
+
+    HBITMAP s1 = app->counterResources.digits[(seconds / 10) % 10];
+    BlitBitmapScaled(hdc, hdcMem, s1, middleLeft + 1u * counterWidth, top + 3, counterWidth, height - 3);
+
+    HBITMAP s2 = app->counterResources.digits[seconds % 10];
+    BlitBitmapScaled(hdc, hdcMem, s2, middleLeft + 2u * counterWidth, top + 3, counterWidth, height - 3);
+}
+
+static void
 RenderCounterArea(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
+    RenderRemainingMines(app, hdc, hdcMem);
+    RenderTimer(app, hdc, hdcMem);
     RenderFace(app, hdc, hdcMem);
 }
 

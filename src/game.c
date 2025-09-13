@@ -202,6 +202,8 @@ RevealCell(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y)
         field->state = GAME_LOST;
         field->blastX = x;
         field->blastY = y;
+        field->endTime = GetTickCount64();
+
         return true;
     }
 
@@ -211,6 +213,7 @@ RevealCell(_Inout_ Minefield* field, _In_ uint32_t x, _In_ uint32_t y)
     if (field->revealedCells == totalCells - field->totalMines)
     {
         field->state = GAME_WON;
+        field->endTime = GetTickCount64();
     }
 
     return true;
