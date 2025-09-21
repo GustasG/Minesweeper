@@ -23,9 +23,14 @@ _Success_(return) static bool TryGetCellFromPoint(
 
     int32_t relX = x - originX;
     int32_t relY = y - originY;
-    int32_t cellSize = (int32_t)app->metrics.cellSize;
-    uint32_t cellX = (uint32_t)(relX / cellSize);
-    uint32_t cellY = (uint32_t)(relY / cellSize);
+
+    if (app->metrics.cellWidth == 0u || app->metrics.cellHeight == 0u)
+        return false;
+
+    int32_t cellWidth = (int32_t)app->metrics.cellWidth;
+    int32_t cellHeight = (int32_t)app->metrics.cellHeight;
+    uint32_t cellX = (uint32_t)(relX / cellWidth);
+    uint32_t cellY = (uint32_t)(relY / cellHeight);
 
     if (cellX >= app->minefield.width || cellY >= app->minefield.height)
         return false;
@@ -39,18 +44,19 @@ _Success_(return) static bool TryGetCellFromPoint(
 static void
 GetFaceRect(_In_ const Application* app, _Out_ LPRECT lpRect)
 {
-    uint32_t contentLeft = app->metrics.borderWidth;
-    uint32_t contentTop = app->metrics.borderHeight;
-    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
-    uint32_t faceSize = app->metrics.faceSize;
+    int32_t contentLeft = (int32_t)app->metrics.borderWidth;
+    int32_t contentTop = (int32_t)app->metrics.borderHeight;
+    int32_t boardWidth = (int32_t)(app->minefield.width * app->metrics.cellWidth);
+    int32_t faceWidth = (int32_t)app->metrics.faceWidth;
+    int32_t faceHeight = (int32_t)app->metrics.faceHeight;
 
-    uint32_t faceLeft = contentLeft + (boardWidth - faceSize) / 2;
-    uint32_t faceTop = contentTop + (app->metrics.counterAreaHeight - faceSize) / 2;
+    int32_t faceLeft = contentLeft + (boardWidth - faceWidth) / 2;
+    int32_t faceTop = contentTop + ((int32_t)app->metrics.counterAreaHeight - faceHeight) / 2;
 
     lpRect->left = faceLeft;
     lpRect->top = faceTop;
-    lpRect->right = faceLeft + faceSize;
-    lpRect->bottom = faceTop + faceSize;
+    lpRect->right = faceLeft + faceWidth;
+    lpRect->bottom = faceTop + faceHeight;
 }
 
 static bool
@@ -110,66 +116,209 @@ ApplyDwmWindowAttributes(_In_ HWND hWnd)
     (void)DwmSetWindowAttribute(hWnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdrop, sizeof(backdrop));
 }
 
+static uint32_t
+ScaleValue(_In_ uint32_t value, _In_ uint32_t numerator, _In_ uint32_t denominator)
+{
+    if (value == 0u || denominator == 0u)
+        return value;
+
+    int scaled = MulDiv((int)value, (int)numerator, (int)denominator);
+
+    return (uint32_t)max(1, scaled);
+}
+
+static SIZE
+GetMinefieldClientSize(_In_ const Application* app, _In_ const LayoutMetrics* metrics)
+{
+    uint64_t boardWidth = (uint64_t)app->minefield.width * metrics->cellWidth;
+    uint64_t boardHeight = (uint64_t)app->minefield.height * metrics->cellHeight;
+
+    SIZE size = {
+        .cx = (LONG)(boardWidth + 2u * metrics->borderWidth),
+        .cy = (LONG)(boardHeight + (3u * metrics->borderHeight) + metrics->counterAreaHeight)
+    };
+
+    return size;
+}
+
+static void
+GetClientSizeLimits(
+    _In_ const Application* app,
+    _Out_opt_ uint32_t* minWidth,
+    _Out_opt_ uint32_t* minHeight)
+{
+    uint32_t resolvedMinWidth = max(app->minClientWidth, 1u);
+    uint32_t resolvedMinHeight = max(app->minClientHeight, 1u);
+
+    if (minWidth != NULL)
+        *minWidth = resolvedMinWidth;
+
+    if (minHeight != NULL)
+        *minHeight = resolvedMinHeight;
+}
+
+static bool
+GetWindowRectForClient(_In_ HWND hWnd, _In_ uint32_t clientWidth, _In_ uint32_t clientHeight, _Out_ LPRECT lpRect)
+{
+    if (lpRect == NULL)
+        return false;
+
+    lpRect->left = 0;
+    lpRect->top = 0;
+    lpRect->right = (LONG)clientWidth;
+    lpRect->bottom = (LONG)clientHeight;
+
+    UINT dpi = GetDpiForWindow(hWnd);
+    return AdjustWindowRectExForDpi(lpRect, GetWindowStyle(hWnd), TRUE, GetWindowExStyle(hWnd), dpi);
+}
+
+static bool
+SetWindowClientSize(_In_ HWND hWnd, _In_ uint32_t width, _In_ uint32_t height)
+{
+    RECT windowRect;
+
+    if (!GetWindowRectForClient(hWnd, width, height, &windowRect))
+        return false;
+
+    return SetWindowPos(
+               hWnd,
+               NULL,
+               0,
+               0,
+               windowRect.right - windowRect.left,
+               windowRect.bottom - windowRect.top,
+               SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+static void
+UpdateScaledMetricsForClient(_Inout_ Application* app, _In_ uint32_t clientWidth, _In_ uint32_t clientHeight)
+{
+    uint32_t minWidth = 0;
+    uint32_t minHeight = 0;
+    const LayoutMetrics* base = &app->baseMetrics;
+
+    GetClientSizeLimits(app, &minWidth, &minHeight);
+
+    clientWidth = max(clientWidth, minWidth);
+    clientHeight = max(clientHeight, minHeight);
+
+    app->clientWidth = clientWidth;
+    app->clientHeight = clientHeight;
+
+    LayoutMetrics scaled = {
+        .cellWidth = ScaleValue(base->cellWidth, clientWidth, minWidth),
+        .cellHeight = ScaleValue(base->cellHeight, clientHeight, minHeight),
+        .borderWidth = ScaleValue(base->borderWidth, clientWidth, minWidth),
+        .borderHeight = ScaleValue(base->borderHeight, clientHeight, minHeight),
+        .counterBorderWidth = ScaleValue(base->counterBorderWidth, clientWidth, minWidth),
+        .counterAreaHeight = ScaleValue(base->counterAreaHeight, clientHeight, minHeight),
+        .counterMargin = ScaleValue(base->counterMargin, clientWidth, minWidth),
+        .counterHeight = ScaleValue(base->counterHeight, clientHeight, minHeight),
+        .counterDigitWidth = ScaleValue(base->counterDigitWidth, clientWidth, minWidth),
+        .faceWidth = ScaleValue(base->faceWidth, clientWidth, minWidth),
+        .faceHeight = ScaleValue(base->faceHeight, clientHeight, minHeight),
+    };
+
+    app->metrics = scaled;
+}
+
 static void
 UpdateLayoutMetricsForWindow(_Inout_ Application* app, _In_ HWND hWnd)
 {
     UINT dpi = GetDpiForWindow(hWnd);
+    LayoutMetrics* base = &app->baseMetrics;
 
-    app->metrics.cellSize = (uint32_t)MulDiv(CELL_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.borderWidth = (uint32_t)MulDiv(BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.borderHeight = (uint32_t)MulDiv(BORDER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.counterBorderWidth = (uint32_t)MulDiv(COUNTER_BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.counterAreaHeight = (uint32_t)MulDiv(COUNTER_AREA_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.counterMargin = (uint32_t)MulDiv(COUNTER_MARGIN, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.counterHeight = (uint32_t)MulDiv(COUNTER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.counterDigitWidth = (uint32_t)MulDiv(COUNTER_DIGIT_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
-    app->metrics.faceSize = (uint32_t)MulDiv(FACE_SIZE, dpi, USER_DEFAULT_SCREEN_DPI);
+    base->cellWidth = max(1u, (uint32_t)MulDiv(CELL_SIZE, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->cellHeight = base->cellWidth;
+    base->borderWidth = max(1u, (uint32_t)MulDiv(BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->borderHeight = max(1u, (uint32_t)MulDiv(BORDER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->counterBorderWidth = max(1u, (uint32_t)MulDiv(COUNTER_BORDER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->counterAreaHeight = max(1u, (uint32_t)MulDiv(COUNTER_AREA_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->counterMargin = (uint32_t)MulDiv(COUNTER_MARGIN, dpi, USER_DEFAULT_SCREEN_DPI);
+    base->counterHeight = max(1u, (uint32_t)MulDiv(COUNTER_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->counterDigitWidth = max(1u, (uint32_t)MulDiv(COUNTER_DIGIT_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->faceWidth = max(1u, (uint32_t)MulDiv(FACE_SIZE, dpi, USER_DEFAULT_SCREEN_DPI));
+    base->faceHeight = base->faceWidth;
+
+    SIZE minClient = GetMinefieldClientSize(app, base);
+    app->minClientWidth = (uint32_t)minClient.cx;
+    app->minClientHeight = (uint32_t)minClient.cy;
 }
 
 _Success_(
     return) static bool AdjustWindowRectForCellSize(_In_ const Application* app, _In_ HWND hWnd, _Out_ LPRECT lpRect)
 {
     UINT dpi = GetDpiForWindow(hWnd);
-
-    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
-    uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
-
-    // left border + grid + right border
-    uint32_t minClientWidth = boardWidth + 2u * app->metrics.borderWidth;
-
-    // top border + counter area + middle part (border) + grid + bottom border
-    uint32_t minClientHeight = boardHeight + (3u * app->metrics.borderHeight) + app->metrics.counterAreaHeight;
+    SIZE minClient = GetMinefieldClientSize(app, &app->baseMetrics);
 
     lpRect->left = 0;
     lpRect->top = 0;
-    lpRect->right = (LONG)minClientWidth;
-    lpRect->bottom = (LONG)minClientHeight;
+    lpRect->right = (LONG)minClient.cx;
+    lpRect->bottom = (LONG)minClient.cy;
 
     return AdjustWindowRectExForDpi(lpRect, GetWindowStyle(hWnd), TRUE, GetWindowExStyle(hWnd), dpi);
 }
 
 static bool
-ResizeWindowForMinefield(_In_ const Application* app, _In_ HWND hWnd)
+ResizeWindowForMinefield(_Inout_ Application* app, _In_ HWND hWnd, _In_ bool forceMinimum)
 {
-    RECT windowRect;
+    SIZE minClient = GetMinefieldClientSize(app, &app->baseMetrics);
+    app->minClientWidth = (uint32_t)minClient.cx;
+    app->minClientHeight = (uint32_t)minClient.cy;
 
-    if (!AdjustWindowRectForCellSize(app, hWnd, &windowRect))
-        return false;
+    RECT clientRect = {0};
 
-    return SetWindowPos(
-        hWnd,
-        NULL,
-        0,
-        0,
-        windowRect.right - windowRect.left,
-        windowRect.bottom - windowRect.top,
-        SWP_NOMOVE | SWP_NOZORDER);
+    if (!GetClientRect(hWnd, &clientRect))
+        ZeroMemory(&clientRect, sizeof(clientRect));
+
+    uint32_t currentWidth = (uint32_t)(clientRect.right - clientRect.left);
+    uint32_t currentHeight = (uint32_t)(clientRect.bottom - clientRect.top);
+
+    uint32_t minWidth = 0;
+    uint32_t minHeight = 0;
+
+    GetClientSizeLimits(app, &minWidth, &minHeight);
+
+    uint32_t targetWidth = forceMinimum ? minWidth : max(currentWidth, minWidth);
+    uint32_t targetHeight = forceMinimum ? minHeight : max(currentHeight, minHeight);
+
+    if (targetWidth != currentWidth || targetHeight != currentHeight)
+    {
+        if (!SetWindowClientSize(hWnd, targetWidth, targetHeight))
+        {
+            RECT fallbackRect;
+
+            if (!AdjustWindowRectForCellSize(app, hWnd, &fallbackRect))
+                return false;
+
+            if (!SetWindowPos(
+                    hWnd,
+                    NULL,
+                    0,
+                    0,
+                    fallbackRect.right - fallbackRect.left,
+                    fallbackRect.bottom - fallbackRect.top,
+                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE))
+            {
+                return false;
+            }
+        }
+
+        if (!GetClientRect(hWnd, &clientRect))
+            return false;
+
+        currentWidth = (uint32_t)(clientRect.right - clientRect.left);
+        currentHeight = (uint32_t)(clientRect.bottom - clientRect.top);
+    }
+
+    UpdateScaledMetricsForClient(app, currentWidth, currentHeight);
+    return true;
 }
 
 static bool
-InitNewGame(_Inout_ Application* app, _In_ HWND hWnd)
+InitNewGame(_Inout_ Application* app, _In_ HWND hWnd, _In_ bool forceMinimum)
 {
-    if (!ResizeWindowForMinefield(app, hWnd))
+    if (!ResizeWindowForMinefield(app, hWnd, forceMinimum))
     {
         MessageBoxW(hWnd, L"Minefield too large for display!", L"Error", MB_OK | MB_ICONWARNING);
         return false;
@@ -186,6 +335,10 @@ InitNewGame(_Inout_ Application* app, _In_ HWND hWnd)
 static void
 StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
 {
+    uint32_t previousWidth = app->minefield.width;
+    uint32_t previousHeight = app->minefield.height;
+    Difficulty previousDifficulty = app->minefield.difficulty;
+
     if (difficulty == DIFFICULTY_CUSTOM)
     {
         uint32_t w = app->minefield.width;
@@ -207,7 +360,19 @@ StartNewGame(_In_ Application* app, _In_ HWND hWnd, _In_ Difficulty difficulty)
         }
     }
 
-    InitNewGame(app, hWnd);
+    bool sizeChanged = (app->minefield.width != previousWidth) || (app->minefield.height != previousHeight);
+    bool forceResize = false;
+
+    if (difficulty == DIFFICULTY_CUSTOM)
+    {
+        forceResize = sizeChanged;
+    }
+    else
+    {
+        forceResize = sizeChanged || (previousDifficulty != difficulty);
+    }
+
+    InitNewGame(app, hWnd, forceResize);
 }
 
 static void
@@ -218,13 +383,18 @@ StartNewGameCustom(
     _In_ uint32_t height,
     _In_ uint32_t mines)
 {
+    uint32_t previousWidth = app->minefield.width;
+    uint32_t previousHeight = app->minefield.height;
+
     if (!CreateCustomMinefield(&app->minefield, width, height, mines))
     {
         MessageBoxW(hWnd, L"Failed to create grid. Check your settings", L"Error", MB_OK | MB_ICONERROR);
         return;
     }
 
-    InitNewGame(app, hWnd);
+    bool sizeChanged = (app->minefield.width != previousWidth) || (app->minefield.height != previousHeight);
+
+    InitNewGame(app, hWnd, sizeChanged);
 }
 
 static INT_PTR CALLBACK
@@ -405,6 +575,31 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
 
             break;
         }
+        case WM_GETMINMAXINFO:
+        {
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            if (app != NULL && app->minClientWidth > 0 && app->minClientHeight > 0)
+            {
+                uint32_t minWidth = 0;
+                uint32_t minHeight = 0;
+
+                GetClientSizeLimits(app, &minWidth, &minHeight);
+
+                MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+                RECT trackRect = {0};
+
+                if (GetWindowRectForClient(hWnd, minWidth, minHeight, &trackRect))
+                {
+                    mmi->ptMinTrackSize.x = trackRect.right - trackRect.left;
+                    mmi->ptMinTrackSize.y = trackRect.bottom - trackRect.top;
+                }
+
+                return 0;
+            }
+
+            break;
+        }
         case WM_CREATE:
         {
             Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
@@ -471,6 +666,22 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
             }
 
             break;
+        }
+        case WM_SIZE:
+        {
+            Application* app = (Application*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+            if (wParam != SIZE_MINIMIZED)
+            {
+                if (app != NULL)
+                {
+                    uint32_t width = LOWORD(lParam);
+                    uint32_t height = HIWORD(lParam);
+                    UpdateScaledMetricsForClient(app, width, height);
+                }
+            }
+
+            return 0;
         }
         case WM_COMMAND:
         {
@@ -600,10 +811,10 @@ WindowProc(_In_ HWND hWnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lPara
             if (app != NULL)
             {
                 UpdateLayoutMetricsForWindow(app, hWnd);
-                ResizeWindowForMinefield(app, hWnd);
-            }
 
-            InvalidateRect(hWnd, NULL, FALSE);
+                if (ResizeWindowForMinefield(app, hWnd, false))
+                    InvalidateRect(hWnd, NULL, FALSE);
+            }
 
             return 0;
         }
@@ -625,7 +836,7 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
 {
     WNDCLASSEX wc = {
         .cbSize = sizeof(WNDCLASSEX),
-        .style = 0,
+        .style = CS_HREDRAW | CS_VREDRAW,
         .lpfnWndProc = WindowProc,
         .cbClsExtra = 0,
         .cbWndExtra = 0,
@@ -655,7 +866,7 @@ CreateMainWindow(_In_ HINSTANCE hInstance)
         0,
         MAKEINTATOM(classAtom),
         L"Minesweeper",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         1280,

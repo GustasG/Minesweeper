@@ -49,7 +49,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t cellSize;
+    uint32_t cellWidth;
+    uint32_t cellHeight;
     uint32_t borderWidth;
     uint32_t borderHeight;
     uint32_t counterBorderWidth;
@@ -57,7 +58,8 @@ typedef struct
     uint32_t counterMargin;
     uint32_t counterHeight;
     uint32_t counterDigitWidth;
-    uint32_t faceSize;
+    uint32_t faceWidth;
+    uint32_t faceHeight;
 } LayoutMetrics;
 
 typedef struct
@@ -68,6 +70,11 @@ typedef struct
     CounterResources counterResources;
     FaceResources faceResources;
     LayoutMetrics metrics;
+    LayoutMetrics baseMetrics;
+    uint32_t minClientWidth;
+    uint32_t minClientHeight;
+    uint32_t clientWidth;
+    uint32_t clientHeight;
     uint32_t hoverCellX;
     uint32_t hoverCellY;
     bool isLeftMouseDown;

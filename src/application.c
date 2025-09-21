@@ -289,16 +289,23 @@ CreateApplication(_In_ HINSTANCE hInstance)
         return NULL;
     }
 
-    app->metrics.cellSize = (uint32_t)CELL_SIZE;
-    app->metrics.borderWidth = (uint32_t)BORDER_WIDTH;
-    app->metrics.borderHeight = (uint32_t)BORDER_HEIGHT;
-    app->metrics.counterBorderWidth = (uint32_t)COUNTER_BORDER_WIDTH;
-    app->metrics.counterAreaHeight = (uint32_t)COUNTER_AREA_HEIGHT;
-    app->metrics.counterMargin = (uint32_t)COUNTER_MARGIN;
-    app->metrics.counterHeight = (uint32_t)COUNTER_HEIGHT;
-    app->metrics.counterDigitWidth = (uint32_t)COUNTER_DIGIT_WIDTH;
-    app->metrics.faceSize = (uint32_t)FACE_SIZE;
+    app->baseMetrics.cellWidth = (uint32_t)CELL_SIZE;
+    app->baseMetrics.cellHeight = (uint32_t)CELL_SIZE;
+    app->baseMetrics.borderWidth = (uint32_t)BORDER_WIDTH;
+    app->baseMetrics.borderHeight = (uint32_t)BORDER_HEIGHT;
+    app->baseMetrics.counterBorderWidth = (uint32_t)COUNTER_BORDER_WIDTH;
+    app->baseMetrics.counterAreaHeight = (uint32_t)COUNTER_AREA_HEIGHT;
+    app->baseMetrics.counterMargin = (uint32_t)COUNTER_MARGIN;
+    app->baseMetrics.counterHeight = (uint32_t)COUNTER_HEIGHT;
+    app->baseMetrics.counterDigitWidth = (uint32_t)COUNTER_DIGIT_WIDTH;
+    app->baseMetrics.faceWidth = (uint32_t)FACE_SIZE;
+    app->baseMetrics.faceHeight = (uint32_t)FACE_SIZE;
 
+    app->metrics = app->baseMetrics;
+    app->minClientWidth = 0;
+    app->minClientHeight = 0;
+    app->clientWidth = 0;
+    app->clientHeight = 0;
     app->hoverCellX = (uint32_t)-1;
     app->hoverCellY = (uint32_t)-1;
     app->isFaceHot = false;

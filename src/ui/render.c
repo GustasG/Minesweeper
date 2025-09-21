@@ -183,9 +183,10 @@ RenderGridCell(
 static void
 RenderBorders(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    uint32_t cellSize = app->metrics.cellSize;
-    uint32_t boardWidth = app->minefield.width * cellSize;
-    uint32_t boardHeight = app->minefield.height * app->metrics.cellSize;
+    uint32_t cellWidth = app->metrics.cellWidth;
+    uint32_t cellHeight = app->metrics.cellHeight;
+    uint32_t boardWidth = app->minefield.width * cellWidth;
+    uint32_t boardHeight = app->minefield.height * cellHeight;
     uint32_t gridRightEdge = app->metrics.borderWidth + boardWidth;
     uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.counterAreaHeight;
     uint32_t bottomEdge = originY + boardHeight;
@@ -306,14 +307,15 @@ RenderFace(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
     uint32_t contentLeft = app->metrics.borderWidth;
     uint32_t contentTop = app->metrics.borderHeight;
-    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellWidth;
 
-    uint32_t faceSize = app->metrics.faceSize;
-    uint32_t faceLeft = contentLeft + (boardWidth - faceSize) / 2;
-    uint32_t faceTop = contentTop + (app->metrics.counterAreaHeight - faceSize) / 2;
+    uint32_t faceWidth = app->metrics.faceWidth;
+    uint32_t faceHeight = app->metrics.faceHeight;
+    int32_t faceLeft = (int32_t)contentLeft + ((int32_t)boardWidth - (int32_t)faceWidth) / 2;
+    int32_t faceTop = (int32_t)contentTop + ((int32_t)app->metrics.counterAreaHeight - (int32_t)faceHeight) / 2;
 
     HBITMAP face = GetFaceBitmap(app);
-    BlitBitmapScaled(hdc, hdcMem, face, faceLeft, faceTop, faceSize, faceSize);
+    BlitBitmapScaled(hdc, hdcMem, face, faceLeft, faceTop, faceWidth, faceHeight);
 }
 
 static void
@@ -370,7 +372,7 @@ RenderTimer(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
     uint32_t contentLeft = app->metrics.borderWidth;
     uint32_t contentTop = app->metrics.borderHeight;
-    uint32_t boardWidth = app->minefield.width * app->metrics.cellSize;
+    uint32_t boardWidth = app->minefield.width * app->metrics.cellWidth;
 
     uint32_t top = contentTop + (app->metrics.counterAreaHeight - app->metrics.counterHeight) / 2u;
     uint32_t height = app->metrics.counterHeight;
@@ -435,7 +437,8 @@ RenderCounterArea(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 static void
 RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 {
-    uint32_t cellSize = app->metrics.cellSize;
+    uint32_t cellWidth = app->metrics.cellWidth;
+    uint32_t cellHeight = app->metrics.cellHeight;
     uint32_t originX = app->metrics.borderWidth;
     uint32_t originY = 2u * app->metrics.borderHeight + app->metrics.counterAreaHeight;
 
@@ -443,14 +446,14 @@ RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
     {
         for (uint32_t x = 0; x < app->minefield.width; x++)
         {
-            uint32_t left = originX + (x * cellSize);
-            uint32_t top = originY + (y * cellSize);
+            uint32_t left = originX + (x * cellWidth);
+            uint32_t top = originY + (y * cellHeight);
 
             RECT cellRect = {
                 .left = (LONG)left,
                 .top = (LONG)top,
-                .right = (LONG)(left + cellSize),
-                .bottom = (LONG)(top + cellSize),
+                .right = (LONG)(left + cellWidth),
+                .bottom = (LONG)(top + cellHeight),
             };
 
             RenderGridCell(app, hdc, hdcMem, &cellRect, x, y);
@@ -461,13 +464,70 @@ RenderGrid(_In_ const Application* app, _In_ HDC hdc, _In_ HDC hdcMem)
 void
 RenderGameWindow(_In_ const Application* app, _In_ HDC hdc)
 {
+    HWND hwnd = WindowFromDC(hdc);
+    RECT clientRect = {0};
+
+    if (hwnd != NULL)
+    {
+        if (!GetClientRect(hwnd, &clientRect))
+            return;
+    }
+    else
+    {
+        clientRect.right = (LONG)app->clientWidth;
+        clientRect.bottom = (LONG)app->clientHeight;
+    }
+
+    int width = clientRect.right - clientRect.left;
+    int height = clientRect.bottom - clientRect.top;
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    HDC hdcBack = CreateCompatibleDC(hdc);
     HDC hdcMem = CreateCompatibleDC(hdc);
-    int oldMode = SetStretchBltMode(hdc, HALFTONE);
 
-    RenderBorders(app, hdc, hdcMem);
-    RenderCounterArea(app, hdc, hdcMem);
-    RenderGrid(app, hdc, hdcMem);
+    if (hdcBack == NULL || hdcMem == NULL)
+    {
+        if (hdcBack != NULL)
+            DeleteDC(hdcBack);
 
-    SetStretchBltMode(hdc, oldMode);
+        if (hdcMem != NULL)
+            DeleteDC(hdcMem);
+
+        return;
+    }
+
+    HBITMAP hbmBack = CreateCompatibleBitmap(hdc, width, height);
+
+    if (hbmBack == NULL)
+    {
+        DeleteDC(hdcBack);
+        DeleteDC(hdcMem);
+        return;
+    }
+
+    HBITMAP oldBack = (HBITMAP)SelectObject(hdcBack, hbmBack);
+    int oldMode = SetStretchBltMode(hdcBack, HALFTONE);
+
+    RECT clearRect = {0, 0, width, height};
+    HBRUSH brush = (HBRUSH)GetStockObject(LTGRAY_BRUSH);
+
+    if (brush != NULL)
+        FillRect(hdcBack, &clearRect, brush);
+    else
+        PatBlt(hdcBack, 0, 0, width, height, WHITENESS);
+
+    RenderBorders(app, hdcBack, hdcMem);
+    RenderCounterArea(app, hdcBack, hdcMem);
+    RenderGrid(app, hdcBack, hdcMem);
+
+    BitBlt(hdc, 0, 0, width, height, hdcBack, 0, 0, SRCCOPY);
+
+    SetStretchBltMode(hdcBack, oldMode);
+    SelectObject(hdcBack, oldBack);
+
+    DeleteObject(hbmBack);
+    DeleteDC(hdcBack);
     DeleteDC(hdcMem);
 }
