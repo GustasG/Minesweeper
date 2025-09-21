@@ -2,11 +2,8 @@ name: MSBuild
 
 on:
   push:
-    branches: [ "master" ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ "master" ]
 
 env:
   SOLUTION_FILE_PATH: .
@@ -23,13 +20,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Build
-      working-directory: ${{ env.GITHUB_WORKSPACE }}
       run: msbuild /m /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform=${{ env.BUILD_PLATFORM }} ${{ env.SOLUTION_FILE_PATH }}
 
     - name: Upload artifact (EXE)
@@ -40,9 +36,8 @@ jobs:
         if-no-files-found: error
 
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
+        generate_release_notes: true
         files: |
           bin/${{ env.BUILD_PLATFORM }}/${{ env.BUILD_CONFIGURATION }}/Minesweeper.exe
-        generate_release_notes: true
